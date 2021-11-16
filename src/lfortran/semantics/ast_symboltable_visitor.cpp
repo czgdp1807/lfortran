@@ -984,6 +984,7 @@ public:
         for (size_t i=0; i<x.n_items; i++) {
             this->visit_unit_decl2(*x.m_items[i]);
         }
+        std::cout<<"DEBUG sym_name: "<<x.m_name<<std::endl;
         for (size_t i=0; i<x.n_contains; i++) {
             visit_procedure_decl(*x.m_contains[i]);
         }
@@ -1005,6 +1006,14 @@ public:
         parent_scope->scope[sym_name] = ASR::down_cast<ASR::symbol_t>(tmp);
         current_scope = parent_scope;
         is_derived_type = false;
+    }
+
+    void visit_Private(const AST::Private_t&) {
+        // To Be Implemented
+    }
+
+    void visit_FinalName(const AST::FinalName_t&) {
+        // To Be Implemented
     }
 
     void visit_InterfaceProc(const AST::InterfaceProc_t &x) {
