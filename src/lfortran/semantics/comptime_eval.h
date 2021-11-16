@@ -102,6 +102,7 @@ struct IntrinsicProcedures {
             {"trim", {m_string, &not_implemented, false}},
             {"len_trim", {m_string, &not_implemented, false}},
             {"repeat", {m_string, &not_implemented, false}},
+            {"new_line", {m_string, &eval_new_line, false}},
 
             // Subroutines
             {"cpu_time", {m_math, &not_implemented, false}},
@@ -429,6 +430,12 @@ TRIG(sqrt)
     }
     static ASR::expr_t *eval_atan2(Allocator &al, const Location &loc, Vec<ASR::expr_t*> &args) {
         return eval_2args(al, loc, args, &atan2);
+    }
+
+    static ASR::expr_t *eval_new_line(Allocator &al, const Location &loc, Vec<ASR::expr_t*> &args) {
+        LFORTRAN_ASSERT(args.size() == 1);
+        char* new_line_str = (char*)"\n";
+        return ASR::down_cast<ASR::expr_t>(ASR::make_ConstantString_t(al, loc, new_line_str, ASRUtils::expr_type(args[0])));
     }
 
     static double lfortran_modulo(double x, double y) {
