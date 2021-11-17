@@ -95,6 +95,10 @@ interface atanh
     module procedure satanh, datanh, catanh, zatanh
 end interface
 
+interface epsilon
+    module procedure sepsilon, depsilon
+end interface
+
 interface system_clock
     module procedure i32sys_clock, i64sys_clock
 end interface
@@ -996,6 +1000,18 @@ interface
     end function
 end interface
 r = c_zatanh(x)
+end function
+
+! epsilon ---------------------------------------------------------------------
+
+elemental real(sp) function sepsilon(x) result(r)
+real(sp), intent(in) :: x
+r = 1.175494351e-38
+end function
+
+elemental real(dp) function depsilon(x) result(r)
+real(dp), intent(in) :: x
+r = 2.2250738585072014E-308
 end function
 
 ! cpu_time ---------------------------------------------------------------------
