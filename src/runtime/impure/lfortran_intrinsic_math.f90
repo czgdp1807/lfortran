@@ -1,5 +1,5 @@
 module lfortran_intrinsic_math
-use, intrinsic :: iso_fortran_env, only: sp => real32, dp => real64
+use, intrinsic :: iso_fortran_env, only: sp => real32, dp => real64, qp => real128
 use, intrinsic :: iso_c_binding, only: c_float, c_double
 implicit none
 
@@ -16,7 +16,7 @@ interface sqrt
 end interface
 
 interface exp
-    module procedure sexp, dexp, cexp, zexp
+    module procedure sexp, dexp, qexp, cexp, zexp
 end interface
 
 interface log
@@ -228,6 +228,10 @@ interface
     end function
 end interface
 r = c_dexp(x)
+end function
+
+elemental real(qp) function qexp(x) result(r)
+real(qp), intent(in) :: x
 end function
 
 elemental complex(sp) function cexp(x) result(r)

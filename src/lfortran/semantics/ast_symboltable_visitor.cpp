@@ -984,7 +984,6 @@ public:
         for (size_t i=0; i<x.n_items; i++) {
             this->visit_unit_decl2(*x.m_items[i]);
         }
-        std::cout<<"DEBUG sym_name: "<<x.m_name<<std::endl;
         for (size_t i=0; i<x.n_contains; i++) {
             visit_procedure_decl(*x.m_contains[i]);
         }

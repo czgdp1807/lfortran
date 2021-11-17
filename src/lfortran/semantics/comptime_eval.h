@@ -110,7 +110,7 @@ struct IntrinsicProcedures {
             {"not", {m_builtin, &eval_not, false}},
             {"iachar",  {m_builtin, &eval_iachar, false}},
             {"achar", {m_builtin, &eval_achar, false}},
-            {"len", {m_builtin, &not_implemented, false}},
+            {"len", {m_builtin, &eval_len, false}},
             {"size", {m_builtin, &not_implemented, false}},
             {"shape", {m_builtin, &not_implemented, false}},
             {"present", {m_builtin, &not_implemented, false}},
@@ -436,6 +436,20 @@ TRIG(sqrt)
         LFORTRAN_ASSERT(args.size() == 1);
         char* new_line_str = (char*)"\n";
         return ASR::down_cast<ASR::expr_t>(ASR::make_ConstantString_t(al, loc, new_line_str, ASRUtils::expr_type(args[0])));
+    }
+
+    static ASR::expr_t *eval_len(Allocator &al, const Location &loc, Vec<ASR::expr_t*> &args) {
+        if( !ASRUtils::all_args_evaluated(args) ) {
+            return nullptr;
+        }
+        LFORTRAN_ASSERT(args.size() == 1 || args.size() == 2);
+        ASR::expr_t *arg_value = ASRUtils::expr_value(args[0]);
+        LFORTRAN_ASSERT(arg_value->type == ASR::exprType::ConstantString);
+        ASR::ConstantString_t *value_str = ASR::down_cast<ASR::ConstantString_t>(arg_value);
+        int64_t len_str = to_lower(value_str->m_s).length();
+        ASR::ttype_t *type = LFortran::ASRUtils::TYPE(ASR::make_Integer_t(al, loc,
+                                                        4, nullptr, 0));
+        return ASR::down_cast<ASR::expr_t>(ASR::make_ConstantInteger_t(al, loc, len_str, type));
     }
 
     static double lfortran_modulo(double x, double y) {
