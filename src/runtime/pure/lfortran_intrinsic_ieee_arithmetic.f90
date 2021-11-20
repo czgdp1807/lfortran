@@ -1,16 +1,24 @@
 module lfortran_intrinsic_ieee_arithmetic
 implicit none
 
-integer, parameter :: int8 = 1
-integer, parameter :: int16 = 2
-integer, parameter :: int32 = 4
-integer, parameter :: int64 = 8
-integer, parameter :: real32 = 4
-integer, parameter :: real64 = 8
-integer, parameter :: real128 = 16
+type IEEE_CLASS_TYPE
+end type
 
-integer, parameter :: input_unit = 5
-integer, parameter :: output_unit = 6
-integer, parameter :: error_unit = 0
+type(ieee_class_type), parameter :: ieee_negative_denormal
+type(ieee_class_type), parameter :: ieee_negative_inf
+type(ieee_class_type), parameter :: ieee_negative_normal
+type(ieee_class_type), parameter :: ieee_negative_zero
+type(ieee_class_type), parameter :: ieee_positive_denormal
+type(ieee_class_type), parameter :: ieee_positive_inf
+type(ieee_class_type), parameter :: ieee_positive_normal
+type(ieee_class_type), parameter :: ieee_positive_zero
+type(ieee_class_type), parameter :: ieee_quiet_nan
+type(ieee_class_type), parameter :: ieee_signaling_nan
+
+elemental function ieee_class(x, class) result(y)
+    real :: x
+    type(ieee_class_type) :: class
+    real :: y
+end function
 
 end module
