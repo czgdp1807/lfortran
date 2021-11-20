@@ -20,6 +20,7 @@ struct IntrinsicProcedures {
     const std::string m_math2 = "lfortran_intrinsic_math2";
     const std::string m_string = "lfortran_intrinsic_string";
     const std::string m_bit = "lfortran_intrinsic_bit";
+    const std::string m_ieee_arithmetic = "lfortran_intrinsic_ieee_arithmetic";
 
     /*
         The last parameter is true if the callback accepts evaluated arguments.
@@ -51,6 +52,7 @@ struct IntrinsicProcedures {
             {"aimag", {m_math, &eval_aimag, true}},
             {"char", {m_builtin, &eval_char, true}},
             {"floor", {m_math2, &eval_floor, true}},
+            {"ceiling", {m_math2, &eval_ceiling, true}},
             {"nint", {m_math2, &eval_nint, true}},
             {"mod", {m_math2, &eval_mod, true}},
             {"modulo", {m_math2, &eval_modulo, true}},
@@ -113,6 +115,7 @@ struct IntrinsicProcedures {
             {"achar", {m_builtin, &eval_achar, false}},
             {"len", {m_builtin, &eval_len, false}},
             {"size", {m_builtin, &not_implemented, false}},
+            {"merge", {m_builtin, &not_implemented, false}},
             {"shape", {m_builtin, &not_implemented, false}},
             {"present", {m_builtin, &not_implemented, false}},
             {"lbound", {m_builtin, &not_implemented, false}},
@@ -279,6 +282,22 @@ struct IntrinsicProcedures {
         if (LFortran::ASR::is_a<LFortran::ASR::Real_t>(*func_type)) {
             double rv = ASR::down_cast<ASR::ConstantReal_t>(func_expr)->m_r;
             int64_t ival = floor(rv);
+            ASR::ttype_t *type = LFortran::ASRUtils::TYPE(
+                    ASR::make_Integer_t(al, loc, 4, nullptr, 0));
+            return ASR::down_cast<ASR::expr_t>(ASR::make_ConstantInteger_t(al, loc, ival, type));
+        } else {
+            throw SemanticError("floor must have one real argument", loc);
+        }
+    }
+
+    static ASR::expr_t *eval_ceiling(Allocator &al, const Location &loc, Vec<ASR::expr_t*> &args) {
+        LFORTRAN_ASSERT(ASRUtils::all_args_evaluated(args));
+        // TODO: Implement optional kind; J3/18-007r1 --> FLOOR(A, [KIND])
+        ASR::expr_t* func_expr = args[0];
+        ASR::ttype_t* func_type = LFortran::ASRUtils::expr_type(func_expr);
+        if (LFortran::ASR::is_a<LFortran::ASR::Real_t>(*func_type)) {
+            double rv = ASR::down_cast<ASR::ConstantReal_t>(func_expr)->m_r;
+            int64_t ival = ceil(rv);
             ASR::ttype_t *type = LFortran::ASRUtils::TYPE(
                     ASR::make_Integer_t(al, loc, 4, nullptr, 0));
             return ASR::down_cast<ASR::expr_t>(ASR::make_ConstantInteger_t(al, loc, ival, type));
