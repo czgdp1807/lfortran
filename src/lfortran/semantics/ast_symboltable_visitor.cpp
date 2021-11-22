@@ -1228,9 +1228,6 @@ public:
             Location loc;
             loc.first = 1;
             loc.last = 1;
-            Str s;
-            s.from_str_view(proc.first);
-            char *generic_name = s.c_str(al);
             Vec<ASR::symbol_t*> symbols;
             symbols.reserve(al, proc.second.size());
             for (auto &pname : proc.second) {
@@ -1241,9 +1238,6 @@ public:
                 x = resolve_symbol(loc, name);
                 symbols.push_back(al, x);
             }
-            ASR::asr_t *v = ASR::make_GenericProcedure_t(al, loc,
-                current_scope,
-                generic_name, symbols.p, symbols.size(), ASR::Public);
             std::string sym_name_str = proc.first;
             if( current_scope->scope.find(proc.first) != current_scope->scope.end() ) {
                 ASR::symbol_t* der_type_name = current_scope->scope[proc.first];
@@ -1251,6 +1245,12 @@ public:
                     sym_name_str = "~" + proc.first;
                 }
             }
+            Str s;
+            s.from_str_view(sym_name_str);
+            char *generic_name = s.c_str(al);
+            ASR::asr_t *v = ASR::make_GenericProcedure_t(al, loc,
+                current_scope,
+                generic_name, symbols.p, symbols.size(), ASR::Public);
             current_scope->scope[sym_name_str] = ASR::down_cast<ASR::symbol_t>(v);
         }
     }
@@ -1464,7 +1464,6 @@ public:
                         break;
                     }
                     default:
-                        std::cout<<"DEBUG "<<(x.m_symbols[i]->type)<<std::endl;
                         throw SemanticError("Symbol with use not supported yet", x.base.base.loc);
                 }
                 std::string local_sym;
@@ -1612,7 +1611,6 @@ public:
                         );
                     current_scope->scope[local_sym] = ASR::down_cast<ASR::symbol_t>(v);
                 } else {
-                    std::cout<<"DEBUG "<<(t->type)<<std::endl;
                     throw LFortranException("Only Subroutines, Functions, Variables and Derived supported in 'use'");
                 }
             }

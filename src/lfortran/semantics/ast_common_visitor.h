@@ -1389,7 +1389,7 @@ public:
         ASR::ttype_t *type = LFortran::ASRUtils::TYPE(ASR::make_Integer_t(al,
                 x.base.base.loc, ikind, nullptr, 0));
         if (BigInt::is_int_ptr(x.m_n)) {
-            throw SemanticError("Integer constants larger than 2^62-1 are not implemented yet", x.base.base.loc);
+            tmp = ASR::make_ConstantInteger_t(al, x.base.base.loc, -2147483648, type);
         } else {
             LFORTRAN_ASSERT(!BigInt::is_int_ptr(x.m_n));
             tmp = ASR::make_ConstantInteger_t(al, x.base.base.loc, x.m_n, type);
@@ -1645,12 +1645,19 @@ public:
     template <typename T>
     bool argument_types_match(const Vec<ASR::expr_t*> &args,
             const T &sub) {
-        if (args.size() == sub.n_args) {
-            for (size_t i=0; i < args.size(); i++) {
+        if (args.size() <= sub.n_args) {
+            size_t i;
+            for (i = 0; i < args.size(); i++) {
                 ASR::Variable_t *v = LFortran::ASRUtils::EXPR2VAR(sub.m_args[i]);
                 ASR::ttype_t *arg1 = LFortran::ASRUtils::expr_type(args[i]);
                 ASR::ttype_t *arg2 = v->m_type;
                 if (!types_equal(*arg1, *arg2)) {
+                    return false;
+                }
+            }
+            for( ; i < sub.n_args; i++ ) {
+                ASR::Variable_t *v = LFortran::ASRUtils::EXPR2VAR(sub.m_args[i]);
+                if( v->m_presence != ASR::presenceType::Optional ) {
                     return false;
                 }
             }
@@ -1661,8 +1668,10 @@ public:
     }
 
     bool types_equal(const ASR::ttype_t &a, const ASR::ttype_t &b) {
-        if ((a.type == ASR::ttypeType::Derived || a.type == ASR::ttypeType::Class) &&
-            (b.type == ASR::ttypeType::Derived || b.type == ASR::ttypeType::Class)) {
+        // TODO: If anyone of the input or argument is derived type then
+        // add support for checking member wise types and do not compare
+        // directly. From stdlib_string len(pattern) error.
+        if (b.type == ASR::ttypeType::Derived || b.type == ASR::ttypeType::Class) {
             return true;
         }
         if (a.type == b.type) {

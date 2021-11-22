@@ -15,10 +15,22 @@ type(ieee_class_type), parameter :: ieee_positive_zero
 type(ieee_class_type), parameter :: ieee_quiet_nan
 type(ieee_class_type), parameter :: ieee_signaling_nan
 
-elemental function ieee_class(x, class) result(y)
+contains
+
+elemental function ieee_class(x) result(y)
+    real :: x
+    type(ieee_class_type) :: y
+end function
+
+elemental function ieee_value(x, class) result(y)
     real :: x
     type(ieee_class_type) :: class
     real :: y
+end function
+
+elemental function ieee_is_nan(x) result(y)
+    real :: x
+    logical :: y
 end function
 
 end module
