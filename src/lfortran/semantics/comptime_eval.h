@@ -62,7 +62,7 @@ struct IntrinsicProcedures {
             {"selected_real_kind", {m_kind, &eval_selected_real_kind, true}},
             {"selected_char_kind", {m_kind, &eval_selected_char_kind, true}},
             {"exp", {m_math, &eval_exp, true}},
-            {"range", {m_math, &eval_range, true}},
+            {"range", {m_math, &eval_range, false}},
             {"epsilon", {m_math, &eval_epsilon, true}},
             {"log", {m_math, &eval_log, true}},
             {"erf", {m_math, &eval_erf, true}},
@@ -581,7 +581,6 @@ TRIG(sqrt)
         if (args.size() != 1) {
             throw SemanticError("Intrinsic range function accepts exactly 1 argument", loc);
         }
-        ASR::expr_t* trig_arg = args[0];
         ASR::ttype_t* t = LFortran::ASRUtils::expr_type(args[0]);
         int64_t range_val = -1;
         if (LFortran::ASR::is_a<LFortran::ASR::Real_t>(*t)) {
@@ -600,7 +599,9 @@ TRIG(sqrt)
             } else if( t_int->m_kind == 8 ) {
                 range_val = 18;
             } else if( t_int->m_kind == 1 ) {
-                range_val = 1;
+                range_val = 2;
+            } else if( t_int->m_kind == 2 ) {
+                range_val = 4;
             } else {
                 throw SemanticError("Only 32, 64 and 8 bit kinds are supported.", loc);
             }
@@ -616,7 +617,6 @@ TRIG(sqrt)
         } else {
             throw SemanticError("Argument of the range function must be Integer, Real or Complex", loc);
         }
-        std::cout<<"Calling eval_range: "<<range_val<<std::endl;
         ASR::ttype_t* tmp_int_type = LFortran::ASRUtils::TYPE(ASR::make_Integer_t(al, loc, 4, nullptr, 0));
         return ASR::down_cast<ASR::expr_t>(ASR::make_ConstantInteger_t(al, loc, range_val, tmp_int_type));;
     }

@@ -1,5 +1,5 @@
 module lfortran_intrinsic_math
-use, intrinsic :: iso_fortran_env, only: sp => real32, dp => real64, qp => real128, int8
+use, intrinsic :: iso_fortran_env, only: sp => real32, dp => real64, qp => real128, int8, int16
 use, intrinsic :: iso_c_binding, only: c_float, c_double
 implicit none
 
@@ -96,7 +96,7 @@ interface atanh
 end interface
 
 interface range
-    module procedure srange, drange, crange, zrange, int8range, i32range, i64range
+    module procedure srange, drange, crange, zrange, int8range, int16range, i32range, i64range
 end interface
 
 interface epsilon
@@ -1021,6 +1021,11 @@ end function
 elemental integer function int8range(x) result(r)
 integer(int8), intent(in) :: x
 r = 2
+end function
+
+elemental integer function int16range(x) result(r)
+integer(int16), intent(in) :: x
+r = 4
 end function
 
 elemental integer function i32range(x) result(r)

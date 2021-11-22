@@ -1028,6 +1028,29 @@ public:
         is_derived_type = false;
     }
 
+    // TODO: Shift to common ast visitor code.
+    void visit_ArrayInitializer(const AST::ArrayInitializer_t &x) {
+        Vec<ASR::expr_t*> body;
+        body.reserve(al, x.n_args);
+        ASR::ttype_t *type = nullptr;
+        for (size_t i=0; i<x.n_args; i++) {
+            visit_expr(*x.m_args[i]);
+            ASR::expr_t *expr = LFortran::ASRUtils::EXPR(tmp);
+            if (type == nullptr) {
+                type = LFortran::ASRUtils::expr_type(expr);
+            } else {
+                if (LFortran::ASRUtils::expr_type(expr)->type != type->type) {
+                    throw SemanticError("Type mismatch in array initializer",
+                        x.base.base.loc);
+                }
+            }
+            body.push_back(al, expr);
+        }
+        tmp = ASR::make_ConstantArray_t(al, x.base.base.loc, body.p,
+            body.size(), type);
+    }
+
+
     void visit_Private(const AST::Private_t&) {
         // To Be Implemented
     }
