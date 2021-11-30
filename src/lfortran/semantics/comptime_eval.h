@@ -112,7 +112,7 @@ struct IntrinsicProcedures {
             {"cpu_time", {m_math, &not_implemented, false}},
             {"bit_size", {m_builtin, &eval_bit_size, false}},
             {"not", {m_builtin, &eval_not, false}},
-            {"iachar",  {m_builtin, &eval_iachar, false}},
+            {"iachar",  {m_builtin, &eval_iachar, true}},
             {"achar", {m_builtin, &eval_achar, false}},
             {"len", {m_builtin, &eval_len, false}},
             {"size", {m_builtin, &not_implemented, false}},
