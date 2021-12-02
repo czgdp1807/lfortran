@@ -137,10 +137,6 @@ public:
         tmp = tmp0;
     }
 
-    void visit_Procedure(const AST::Procedure_t&) {
-        // To Be Implemented
-    }
-
     void visit_Private(const AST::Private_t&) {
         // To Be Implemented
     }
@@ -1241,7 +1237,8 @@ public:
             std::string sym_name_str = proc.first;
             if( current_scope->scope.find(proc.first) != current_scope->scope.end() ) {
                 ASR::symbol_t* der_type_name = current_scope->scope[proc.first];
-                if( der_type_name->type == ASR::symbolType::DerivedType ) {
+                if( der_type_name->type == ASR::symbolType::DerivedType ||
+                    der_type_name->type == ASR::symbolType::Function ) {
                     sym_name_str = "~" + proc.first;
                 }
             }
