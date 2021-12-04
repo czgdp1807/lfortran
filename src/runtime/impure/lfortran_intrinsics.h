@@ -122,6 +122,8 @@ LFORTRAN_API void _lfortran_free(char* ptr);
 LFORTRAN_API void _lfortran_string_init(int size_plus_one, char *s);
 LFORTRAN_API int32_t _lfortran_iand32(int32_t x, int32_t y);
 LFORTRAN_API int64_t _lfortran_iand64(int64_t x, int64_t y);
+LFORTRAN_API int32_t _lfortran_not32(int32_t x);
+LFORTRAN_API int64_t _lfortran_not64(int64_t x);
 LFORTRAN_API int32_t _lfortran_ior32(int32_t x, int32_t y);
 LFORTRAN_API int64_t _lfortran_ior64(int64_t x, int64_t y);
 LFORTRAN_API int32_t _lfortran_ieor32(int32_t x, int32_t y);
