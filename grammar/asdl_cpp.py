@@ -866,6 +866,12 @@ class DeserializationVisitorVisitor(ASDLVisitor):
         self.emit("/" + "*"*78 + "/")
         self.emit("// Deserialization Visitor base class")
         self.emit("")
+        self.emit("struct MissingSymbolMetaData {")
+        self.emit("std::vector<std::string> symbol_name;", 1)
+        self.emit("std::vector<uint64_t> symtab_id;", 1)
+        self.emit("ASR::asr_t* node;", 1)
+        self.emit("};")
+        self.emit("")
         self.emit("template <class Derived>")
         self.emit("class DeserializationBaseVisitor : public BaseVisitor<Derived>")
         self.emit("{")
@@ -873,7 +879,9 @@ class DeserializationVisitorVisitor(ASDLVisitor):
         self.emit(  "Derived& self() { return static_cast<Derived&>(*this); }", 1)
         self.emit("public:")
         self.emit(  "Allocator &al;", 1)
-        self.emit(  "bool load_symtab_id;", 1)
+        self.emit(  "bool load_symtab_id, missing_symbol_found;", 1)
+        self.emit(  "MissingSymbolMetaData* missing_sym;", 1)
+        self.emit(  "std::vector<MissingSymbolMetaData*> correction_data;", 1)
         self.emit(  "std::map<uint64_t,SymbolTable*> id_symtab_map;", 1)
         self.emit(  r"DeserializationBaseVisitor(Allocator &al, bool load_symtab_id) : al{al}, load_symtab_id{load_symtab_id} {}", 1)
         self.emit_deserialize_node();
@@ -998,6 +1006,8 @@ class DeserializationVisitorVisitor(ASDLVisitor):
     def visitConstructor(self, cons, _):
         name = cons.name
         self.emit("%s_t* deserialize_%s() {" % (subs["mod"], name), 1)
+        if name == "DerivedRef":
+            self.emit("missing_sym = al.make_new<ASR::MissingSymbolMetaData>();", 2)
         lines = []
         args = ["al", "loc"]
         for f in cons.fields:
@@ -1149,7 +1159,15 @@ class DeserializationVisitorVisitor(ASDLVisitor):
         self.emit(    'Location loc;', 2)
         self.emit(    '// FIXME: read loc from the stream', 2)
         self.emit(    'loc.first=0; loc.last=0;', 2)
-        self.emit(    'return %s::make_%s_t(%s);' % (subs["mod"].upper(), name, ", ".join(args)), 2)
+        if name == "DerivedRef":
+            self.emit(    'asr_t* ret_value = %s::make_%s_t(%s);' % (subs["mod"].upper(), name, ", ".join(args)), 2)
+            self.emit(    'if( self().missing_symbol_found ) {', 2)
+            self.emit(    'self().missing_sym->node = ret_value;', 3)
+            self.emit(    'self().correction_data.push_back(self().missing_sym);', 3)
+            self.emit(    '}', 2)
+            self.emit(    'return ret_value;', 2)
+        else:
+            self.emit(    'return %s::make_%s_t(%s);' % (subs["mod"].upper(), name, ", ".join(args)), 2)
         self.emit("}", 1)
 
 

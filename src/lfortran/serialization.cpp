@@ -169,7 +169,12 @@ public:
         uint64_t symtab_id = read_int64();
         uint64_t symbol_type = read_int8();
         std::string symbol_name  = read_string();
-        LFORTRAN_ASSERT(id_symtab_map.find(symtab_id) != id_symtab_map.end());
+        if( id_symtab_map.find(symtab_id) == id_symtab_map.end() ) {
+            missing_sym->symbol_name.push_back(symbol_name);
+            missing_sym->symtab_id.push_back(symtab_id);
+            missing_symbol_found = true;
+            return nullptr;
+        }
         SymbolTable *symtab = id_symtab_map[symtab_id];
         if (symtab->scope.find(symbol_name) == symtab->scope.end()) {
             // Symbol is not in the symbol table yet. We construct an empty
@@ -367,10 +372,38 @@ void fix_external_symbols(ASR::TranslationUnit_t &unit,
     e.visit_TranslationUnit(unit);
 }
 
+void fix_node(ASR::expr_t* node, ASR::MissingSymbolMetaData* meta_data,
+              std::map<uint64_t, SymbolTable*>& id_symtab_map) {
+    switch( node->type ) {
+        case ASR::exprType::DerivedRef: {
+            ASR::DerivedRef_t* derived_ref = ASR::down_cast<ASR::DerivedRef_t>(node);
+            SymbolTable* symtab = id_symtab_map[meta_data->symtab_id[0]];
+            derived_ref->m_m = symtab->scope[meta_data->symbol_name[0]];
+            break;
+        }
+        default: {
+            throw LFortranException("Fixing only supported for ASR::exprType::DerivedRef");
+        }
+    }
+}
+
 ASR::asr_t* deserialize_asr(Allocator &al, const std::string &s,
         bool load_symtab_id, SymbolTable &external_symtab) {
     ASRDeserializationVisitor v(al, s, load_symtab_id);
     ASR::asr_t *node = v.deserialize_node();
+    for( size_t i = 0; i < v.correction_data.size(); i++ ) {
+        ASR::MissingSymbolMetaData* meta_data = v.correction_data[i];
+        switch( meta_data->node->type ) {
+            case ASR::asrType::expr: {
+                ASR::expr_t* expr_node = ASR::down_cast<ASR::expr_t>(meta_data->node);
+                fix_node(expr_node, meta_data, v.id_symtab_map);
+                break;
+            };
+            default: {
+                throw LFortranException("Support for fixing nullptr is only available for ASR::asrType::expr");
+            }
+        }
+    }
     ASR::TranslationUnit_t *tu = ASR::down_cast2<ASR::TranslationUnit_t>(node);
 
     // Connect the `parent` member of symbol tables
