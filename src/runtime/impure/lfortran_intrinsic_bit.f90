@@ -34,6 +34,10 @@ interface ishft
     module procedure ishft32, ishft64
 end interface
 
+interface mvbits
+    module procedure mvbits32, mvbits64
+end interface
+
 contains
 
 ! iand --------------------------------------------------------------------------
@@ -291,5 +295,18 @@ else
     error stop "shift must be less than 64"
 end if
 end function
+
+! mvbits ------------------------------------------------------------------------
+
+elemental subroutine mvbits32(from, frompos, len, to, topos)
+integer(int32), intent(in) :: from, frompos, len
+integer(int32), intent(out) :: to, topos
+end subroutine
+
+elemental subroutine mvbits64(from, frompos, len, to, topos)
+integer(int64), intent(in) :: from
+integer(int32), intent(in) :: frompos, len, topos
+integer(int64), intent(out) :: to
+end subroutine
 
 end module

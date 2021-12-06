@@ -2,8 +2,9 @@ module lfortran_intrinsic_builtin
 implicit none
 
 interface
-    integer function size(x)
+    integer function size(x, kind)
     integer, intent(in) :: x(:)
+    integer, optional, intent(in) :: kind
     end function
 
     integer function shape(x)
