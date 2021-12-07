@@ -485,16 +485,11 @@ public:
             deftype = ASR::deftypeType::Interface;
         }
 
-        tmp = ASR::make_Function_t(
-            al, x.base.base.loc,
-            /* a_symtab */ current_scope,
-            /* a_name */ s2c(al, to_lower(x.m_name)),
-            /* a_args */ args.p,
-            /* n_args */ args.size(),
-            /* a_body */ nullptr,
-            /* n_body */ 0,
-            /* a_return_var */ LFortran::ASRUtils::EXPR(return_var_ref),
-            current_procedure_abi_type, s_access, deftype, bindc_name);
+        if( generic_procedures.find(sym_name) != generic_procedures.end() ) {
+            parent_scope->scope.erase(sym_name);
+            sym_name = "~" + sym_name;
+        }
+
         if (parent_scope->scope.find(sym_name) != parent_scope->scope.end()) {
             ASR::symbol_t *f1 = parent_scope->scope[sym_name];
             ASR::Function_t *f2 = nullptr;
@@ -509,6 +504,17 @@ public:
                 throw SemanticError("Function already defined", tmp->loc);
             }
         }
+
+        tmp = ASR::make_Function_t(
+            al, x.base.base.loc,
+            /* a_symtab */ current_scope,
+            /* a_name */ s2c(al, to_lower(sym_name)),
+            /* a_args */ args.p,
+            /* n_args */ args.size(),
+            /* a_body */ nullptr,
+            /* n_body */ 0,
+            /* a_return_var */ LFortran::ASRUtils::EXPR(return_var_ref),
+            current_procedure_abi_type, s_access, deftype, bindc_name);
         parent_scope->scope[sym_name] = ASR::down_cast<ASR::symbol_t>(tmp);
         current_scope = parent_scope;
         current_procedure_args.clear();
@@ -1227,9 +1233,13 @@ public:
             Vec<ASR::symbol_t*> symbols;
             symbols.reserve(al, proc.second.size());
             for (auto &pname : proc.second) {
+                std::string correct_pname = pname;
+                if( pname == proc.first ) {
+                    correct_pname = "~" + pname;
+                }
                 ASR::symbol_t *x;
                 Str s;
-                s.from_str_view(pname);
+                s.from_str_view(correct_pname);
                 char *name = s.c_str(al);
                 x = resolve_symbol(loc, name);
                 symbols.push_back(al, x);
