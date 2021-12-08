@@ -524,10 +524,6 @@ public:
                             = AST::down_cast<AST::CaseCondExpr_t>(Case_Stmt->m_test[i]);
                         this->visit_expr(*condexpr->m_cond);
                         ASR::expr_t* m_test_i = LFortran::ASRUtils::EXPR(tmp);
-                        if( LFortran::ASRUtils::expr_type(m_test_i)->type != ASR::ttypeType::Integer ) {
-                            throw SemanticError(R"""(Expression in Case selector can only be an Integer)""",
-                                                x.base.loc);
-                        }
                         a_test_vec.push_back(al, LFortran::ASRUtils::EXPR(tmp));
                     }
                     Vec<ASR::stmt_t*> case_body_vec;
@@ -580,9 +576,6 @@ public:
     void visit_Select(const AST::Select_t& x) {
         this->visit_expr(*(x.m_test));
         ASR::expr_t* a_test = LFortran::ASRUtils::EXPR(tmp);
-        if( LFortran::ASRUtils::expr_type(a_test)->type != ASR::ttypeType::Integer ) {
-            throw SemanticError(R"""(Expression in Case selector can only be an Integer)""", x.base.base.loc);
-        }
         Vec<ASR::case_stmt_t*> a_body_vec;
         a_body_vec.reserve(al, x.n_body);
         Vec<ASR::stmt_t*> def_body;
