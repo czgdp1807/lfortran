@@ -1001,23 +1001,20 @@ public:
     }
 
     void visit_DoLoop(const AST::DoLoop_t &x) {
-        if (! x.m_var) {
-            throw SemanticError("Do loop: loop variable is required for now",
-                x.base.base.loc);
+        ASR::expr_t *var, *start, *end;
+        var = start = end = nullptr;
+        if (x.m_var) {
+            var = LFortran::ASRUtils::EXPR(resolve_variable(x.base.base.loc, to_lower(x.m_var)));
         }
-        if (! x.m_start) {
-            throw SemanticError("Do loop: start condition required for now",
-                x.base.base.loc);
+        if (x.m_start) {
+            visit_expr(*x.m_start);
+            start = LFortran::ASRUtils::EXPR(tmp);
         }
-        if (! x.m_end) {
-            throw SemanticError("Do loop: end condition required for now",
-                x.base.base.loc);
+        if (x.m_end) {
+            visit_expr(*x.m_end);
+            end = LFortran::ASRUtils::EXPR(tmp);
         }
-        ASR::expr_t *var = LFortran::ASRUtils::EXPR(resolve_variable(x.base.base.loc, to_lower(x.m_var)));
-        visit_expr(*x.m_start);
-        ASR::expr_t *start = LFortran::ASRUtils::EXPR(tmp);
-        visit_expr(*x.m_end);
-        ASR::expr_t *end = LFortran::ASRUtils::EXPR(tmp);
+
         ASR::expr_t *increment;
         if (x.m_increment) {
             visit_expr(*x.m_increment);
@@ -1034,7 +1031,11 @@ public:
         head.m_start = start;
         head.m_end = end;
         head.m_increment = increment;
-        head.loc = head.m_v->base.loc;
+        if( head.m_v ) {
+            head.loc = head.m_v->base.loc;
+        } else {
+            head.loc = x.base.base.loc;
+        }
         tmp = ASR::make_DoLoop_t(al, x.base.base.loc, head, body.p,
                 body.size());
     }

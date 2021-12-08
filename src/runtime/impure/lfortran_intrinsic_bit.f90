@@ -38,6 +38,26 @@ interface mvbits
     module procedure mvbits32, mvbits64
 end interface
 
+interface bge
+    module procedure bge32, bge64
+end interface
+
+interface bgt
+    module procedure bgt32, bgt64
+end interface
+
+interface ble
+    module procedure ble32, ble64
+end interface
+
+interface blt
+    module procedure blt32, blt64
+end interface
+
+interface ibits
+    module procedure ibits32, ibits64
+end interface
+
 contains
 
 ! iand --------------------------------------------------------------------------
@@ -308,5 +328,56 @@ integer(int64), intent(in) :: from
 integer(int32), intent(in) :: frompos, len, topos
 integer(int64), intent(out) :: to
 end subroutine
+
+! bge ------------------------------------------------------------------------
+
+elemental logical function bge32(i, j) result(r)
+integer(int32) :: i, j
+end function
+
+elemental logical function bge64(i, j) result(r)
+integer(int64) :: i, j
+end function
+
+! bgt ------------------------------------------------------------------------
+
+elemental logical function bgt32(i, j) result(r)
+integer(int32) :: i, j
+end function
+
+elemental logical function bgt64(i, j) result(r)
+integer(int64) :: i, j
+end function
+
+! ble ------------------------------------------------------------------------
+
+elemental logical function ble32(i, j) result(r)
+integer(int32) :: i, j
+end function
+
+elemental logical function ble64(i, j) result(r)
+integer(int64) :: i, j
+end function
+
+! blt ------------------------------------------------------------------------
+
+elemental logical function blt32(i, j) result(r)
+integer(int32) :: i, j
+end function
+
+elemental logical function blt64(i, j) result(r)
+integer(int64) :: i, j
+end function
+
+! ibits ------------------------------------------------------------------------
+
+elemental integer(int32) function ibits32(i, pos, len) result(r)
+integer(int32) :: i, pos, len
+end function
+
+elemental integer(int64) function ibits64(i, pos, len) result(r)
+integer(int64) :: i
+integer(int32) :: pos, len
+end function
 
 end module
