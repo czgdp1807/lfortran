@@ -882,15 +882,20 @@ public:
         visit_expr_list(x.m_args, x.n_args, args);
         if (x.n_keywords > 0) {
             ASR::symbol_t* f2 = LFortran::ASRUtils::symbol_get_past_external(original_sym);
+            ASR::Subroutine_t *f = nullptr;
             if (ASR::is_a<ASR::Subroutine_t>(*f2)) {
-                ASR::Subroutine_t *f = ASR::down_cast<ASR::Subroutine_t>(f2);
-                visit_kwargs(args, x.m_keywords, x.n_keywords,
-                    f->m_args, f->n_args, x.base.base.loc, f);
+                f = ASR::down_cast<ASR::Subroutine_t>(f2);
+            } else if(ASR::is_a<ASR::ClassProcedure_t>(*f2)) {
+                ASR::ClassProcedure_t* f_cp = ASR::down_cast<ASR::ClassProcedure_t>(f2);
+                f = ASR::down_cast<ASR::Subroutine_t>(
+                        LFortran::ASRUtils::symbol_get_past_external(f_cp->m_proc));
             } else {
                 throw SemanticError(
                     "Keyword arguments are not implemented for generic subroutines yet",
                     x.base.base.loc);
             }
+            visit_kwargs(args, x.m_keywords, x.n_keywords,
+                    f->m_args, f->n_args, x.base.base.loc, f);
         }
         Vec<ASR::call_arg_t> args_with_mdt;
         if( x.n_member == 1 ) {

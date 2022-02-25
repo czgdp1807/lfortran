@@ -128,6 +128,7 @@ struct IntrinsicProcedures {
             {"achar", {m_builtin, &eval_achar, false}},
             {"len", {m_builtin, &eval_len, false}},
             {"size", {m_builtin, &not_implemented, false}},
+            {"move_alloc", {m_builtin, &not_implemented, false}},
             {"shape", {m_builtin, &not_implemented, false}},
             {"present", {m_builtin, &not_implemented, false}},
             {"lbound", {m_builtin, &not_implemented, false}},
