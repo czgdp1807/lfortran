@@ -1166,9 +1166,4 @@ else
 end if
 end function
 
-subroutine date_and_time(date, time, zone, values)
-    character(len=*), intent(out), optional :: date, time, zone
-    integer, intent(out), optional :: values(8)
-end subroutine
-
 end module
