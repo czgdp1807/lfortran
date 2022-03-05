@@ -48,7 +48,7 @@ struct IntrinsicProcedures {
             // So we shouldn't even encounter them here
             {"int", {m_builtin, &eval_int, false}},
             {"real", {m_builtin, &not_implemented, false}},
-            {"merge", {m_builtin, &not_implemented, false}},
+            {"merge", {m_math2, &not_implemented, false}},
 
             // Require evaluated arguments
             {"aimag", {m_math, &eval_aimag, true}},

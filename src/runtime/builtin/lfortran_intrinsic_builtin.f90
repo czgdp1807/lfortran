@@ -27,12 +27,6 @@ interface
     integer, intent(in) :: dim
     end function
 
-    integer function merge(tsource, fsource, mask)
-    integer, intent(in) :: tsource(:)
-    integer, intent(in) :: fsource(:)
-    logical, intent(in) :: mask
-    end function
-
     integer function max(a, b)
     integer, intent(in) :: a, b
     end function

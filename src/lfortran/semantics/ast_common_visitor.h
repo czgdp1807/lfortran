@@ -859,7 +859,6 @@ public:
             if (ASRUtils::is_intrinsic_function(f)) {
                 ASR::symbol_t* v2 = LFortran::ASRUtils::symbol_get_past_external(v);
                 ASR::GenericProcedure_t *gp = ASR::down_cast<ASR::GenericProcedure_t>(v2);
-
                 ASR::asr_t *result = intrinsic_function_transformation(al, loc, gp->m_name, args);
                 if (result) {
                     return result;
