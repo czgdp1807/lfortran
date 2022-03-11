@@ -17,6 +17,11 @@ interface
     integer, intent(in) :: x(:)
     end function
 
+    integer function reshape(x, shape_vec) result(r)
+    integer, intent(in) :: x(:)
+    integer, intent(in) :: shape_vec(:)
+    end function
+
     integer function lbound(x, dim)
     integer, intent(in) :: x(:)
     integer, intent(in) :: dim
