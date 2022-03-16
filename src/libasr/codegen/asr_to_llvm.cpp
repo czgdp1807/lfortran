@@ -209,7 +209,7 @@ public:
 
     std::unordered_map<std::uint32_t, std::unordered_map<std::string, llvm::Type*>> arr_arg_type_cache;
 
-    std::map<std::string, std::pair<llvm::Type*, llvm::Type*>> fname2arg_type;
+    std::map<std::string, std::pair<llvm::Type*, llvm::Type*>> fname2arg_type, fname2ret_type;
 
     // Maps for containing information regarding derived types
     std::map<std::string, llvm::StructType*> name2dertype;
@@ -853,9 +853,28 @@ public:
                                                                                    arr_descr->get_dimension_descriptor_type(true),
                                                                                     getIntType(4)}), "size_arg");
         fname2arg_type["size"] = std::make_pair(size_arg, size_arg->getPointerTo());
-        llvm::Type* bound_arg = static_cast<llvm::Type*>(arr_descr->get_dimension_descriptor_type(true));
-        fname2arg_type["lbound"] = std::make_pair(bound_arg, bound_arg->getPointerTo());
-        fname2arg_type["ubound"] = std::make_pair(bound_arg, bound_arg->getPointerTo());
+        llvm::Type* dim_des = static_cast<llvm::Type*>(arr_descr->get_dimension_descriptor_type(true));
+        std::pair<llvm::Type*, llvm::Type*> dim_des_pair = std::make_pair(dim_des, dim_des->getPointerTo());
+        fname2arg_type["lbound"] = dim_des_pair;
+        fname2arg_type["ubound"] = dim_des_pair;
+
+        Vec<ASR::dimension_t> ret_type_dims;
+        ret_type_dims.reserve(al, 1);
+        ASR::dimension_t dim;
+        dim.loc = x.base.base.loc;
+        ASR::ttype_t* int32_type = ASRUtils::TYPE(ASR::make_Integer_t(al, x.base.base.loc, 4, nullptr, 0));
+        dim.m_start = ASRUtils::EXPR(ASR::make_ConstantInteger_t(al, x.base.base.loc, 1, int32_type));
+        dim.m_end = ASRUtils::EXPR(ASR::make_ConstantInteger_t(al, x.base.base.loc, 32, int32_type));
+        ret_type_dims.push_back(al, dim);
+        ASR::ttype_t* m_type_ = ASRUtils::TYPE(ASR::make_Integer_t(al, x.base.base.loc, 4, ret_type_dims.p, 1));
+        llvm::Type* el_type_ = get_el_type(m_type_, 4);
+        llvm::Type* ret_type = arr_descr->get_array_type(m_type_, 4, 1, ret_type_dims.p, el_type_);
+        fname2ret_type["shape"] = std::make_pair(ret_type, ret_type->getPointerTo());
+
+        llvm::Type* shape_arg = (llvm::Type*)llvm::StructType::create(context, std::vector<llvm::Type*>({
+                                                                                   arr_descr->get_dimension_descriptor_type(true),
+                                                                                    getIntType(4), ret_type->getPointerTo()}), "shape_arg");
+        fname2arg_type["shape"] = std::make_pair(shape_arg, shape_arg->getPointerTo());
 
         // Process Variables first:
         for (auto &item : x.m_global_scope->scope) {
@@ -1471,6 +1490,7 @@ public:
                             m_h = get_hash((ASR::asr_t*)_sub);
                             is_v_arg = is_argument(v, _sub->m_args, _sub->n_args);
                         }
+                        std::cout<<"m_name.def: "<<m_name<<" "<<(fname2arg_type.find(m_name) != fname2arg_type.end())<<" "<<abi_type<<" "<<is_array_type<<std::endl;
                         if( is_array_type ) {
                             /* The first element in an array descriptor can be either of
                             * llvm::ArrayType or llvm::PointerType. However, a
@@ -1484,6 +1504,7 @@ public:
                                 is_array_type = false;
                             } else if( abi_type == ASR::abiType::Intrinsic &&
                                 fname2arg_type.find(m_name) != fname2arg_type.end() ) {
+                                std::cout<<"m_name: "<<m_name<<std::endl;
                                 type = fname2arg_type[m_name].second;
                                 is_array_type = false;
                             }
@@ -2096,9 +2117,14 @@ public:
 
 
     llvm::FunctionType* get_function_type(const ASR::Function_t &x){
+        std::string func_name = std::string(x.m_name);
+        func_name = to_lower(func_name);
+        llvm::Type *return_type;
+        if( fname2ret_type.find(func_name) != fname2ret_type.end() ) {
+            return_type = fname2ret_type[func_name].first;
+        } else {
         ASR::ttype_t *return_var_type0 = EXPR2VAR(x.m_return_var)->m_type;
         ASR::ttypeType return_var_type = return_var_type0->type;
-        llvm::Type *return_type;
         switch (return_var_type) {
             case (ASR::ttypeType::Integer) : {
                 int a_kind = down_cast<ASR::Integer_t>(return_var_type0)->m_kind;
@@ -2159,6 +2185,7 @@ public:
             default :
                 LFORTRAN_ASSERT(false);
                 throw CodeGenError("Type not implemented");
+        }
         }
         std::vector<llvm::Type*> args = convert_args(x);
         llvm::FunctionType *function_type = llvm::FunctionType::get(
@@ -2357,6 +2384,57 @@ public:
                 start_new_block(loopend);
 
                 define_function_exit(x);
+            } else if( m_name == "shape" ) {
+                define_function_entry(x);
+
+                // Defines the size intrinsic's body at LLVM level.
+                ASR::Variable_t *arg = EXPR2VAR(x.m_args[0]);
+                uint32_t h = get_hash((ASR::asr_t*)arg);
+                llvm::Value* llvm_arg = llvm_symtab[h];
+
+                llvm::Value* dim_des_val = builder->CreateLoad(llvm_utils->create_gep(llvm_arg, 0));
+                llvm::Value* rank = builder->CreateLoad(llvm_utils->create_gep(llvm_arg, 1));
+                llvm::Value* llvm_ret_ptr = builder->CreateLoad(llvm_utils->create_gep(llvm_arg, 2));
+                print_util(rank, "rank 1: %d", "\n");
+                llvm::Value* dim_des_arr = builder->CreateLoad(arr_descr->get_pointer_to_dimension_descriptor_array(llvm_ret_ptr));
+                dim_des_arr = llvm_utils->create_ptr_gep(dim_des_arr, 0);
+                llvm::Value* dim_des = arr_descr->get_pointer_to_dimension_descriptor(dim_des_arr,
+                                            llvm::ConstantInt::get(context, llvm::APInt(32, 0)));
+                print_util(rank, "rank 2: %d", "\n");
+                arr_descr->set_lower_bound(dim_des, llvm::ConstantInt::get(context, llvm::APInt(32, 1)));
+                arr_descr->set_upper_bound(dim_des, rank);
+                print_util(rank, "rank 3: %d", "\n");
+
+                llvm::BasicBlock *loophead = llvm::BasicBlock::Create(context, "loop.head");
+                llvm::BasicBlock *loopbody = llvm::BasicBlock::Create(context, "loop.body");
+                llvm::BasicBlock *loopend = llvm::BasicBlock::Create(context, "loop.end");
+                this->current_loophead = loophead;
+                this->current_loopend = loopend;
+
+                llvm::Value* r = builder->CreateAlloca(getIntType(4), nullptr);
+                builder->CreateStore(llvm::ConstantInt::get(context, llvm::APInt(32, 0)), r);
+                // head
+                start_new_block(loophead);
+                llvm::Value *cond = builder->CreateICmpSLT(builder->CreateLoad(r), rank);
+                builder->CreateCondBr(cond, loopbody, loopend);
+
+                // body
+                start_new_block(loopbody);
+                llvm::Value* r_val = builder->CreateLoad(r);
+                std::vector<llvm::Value*> idx = {r_val};
+                llvm::Value* ret_val = arr_descr->get_single_element(llvm_ret_ptr, idx, 1);
+                llvm::Value* dim_size = arr_descr->get_dimension_size(dim_des_val, r_val);
+                builder->CreateStore(dim_size, ret_val);
+                ret_val = arr_descr->get_single_element(llvm_ret_ptr, idx, 1);
+                print_util(builder->CreateLoad(ret_val), "%d", "\n");
+                r_val = builder->CreateAdd(r_val, llvm::ConstantInt::get(context, llvm::APInt(32, 1)));
+                builder->CreateStore(r_val, r);
+                builder->CreateBr(loophead);
+
+                // end
+                start_new_block(loopend);
+
+                builder->CreateRet(builder->CreateLoad(llvm_ret_ptr));
             } else if( m_name == "lbound" || m_name == "ubound" ) {
                 define_function_entry(x);
 
@@ -3535,7 +3613,7 @@ public:
             x_abi = sub->m_abi;
         }
         if( x_abi == ASR::abiType::Intrinsic ) {
-            if( name == "size" ) {
+            if( name == "size" || name == "shape" ) {
                 /*
                 When size intrinsic is called on a fortran array then the above
                 code extracts the dimension descriptor array and its rank from the
@@ -3547,21 +3625,43 @@ public:
                 ASR::Variable_t *arg = EXPR2VAR(x.m_args[0].m_value);
                 uint32_t h = get_hash((ASR::asr_t*)arg);
                 tmp = llvm_symtab[h];
-                llvm::Value* arg_struct = builder->CreateAlloca(fname2arg_type["size"].first, nullptr);
-                llvm::Value* first_ele_ptr = llvm_utils->create_gep(
-                    arr_descr->get_pointer_to_dimension_descriptor_array(tmp), 0);
+                llvm::Value* arg_struct = builder->CreateAlloca(fname2arg_type[name].first, nullptr);
+                llvm::Value* first_ele_ptr = llvm_utils->create_ptr_gep(
+                    builder->CreateLoad(arr_descr->get_pointer_to_dimension_descriptor_array(tmp)), 0);
                 llvm::Value* first_arg_ptr = llvm_utils->create_gep(arg_struct, 0);
                 builder->CreateStore(first_ele_ptr, first_arg_ptr);
                 llvm::Value* rank_ptr = llvm_utils->create_gep(arg_struct, 1);
                 llvm::StructType* tmp_type = (llvm::StructType*)(((llvm::PointerType*)(tmp->getType()))->getElementType());
-                int rank = ((llvm::ArrayType*)(tmp_type->getElementType(2)))->getNumElements();
+                int rank = 2;
                 builder->CreateStore(llvm::ConstantInt::get(context, llvm::APInt(32, rank)), rank_ptr);
                 tmp = arg_struct;
                 args.push_back(tmp);
-                llvm::Value* dim = builder->CreateAlloca(getIntType(4));
-                args.push_back(dim);
-                llvm::Value* kind = builder->CreateAlloca(getIntType(4));
-                args.push_back(kind);
+                if( name == "size" ) {
+                    llvm::Value* dim = builder->CreateAlloca(getIntType(4));
+                    args.push_back(dim);
+                    llvm::Value* kind = builder->CreateAlloca(getIntType(4));
+                    args.push_back(kind);
+                } else if( name == "shape" ) {
+                    llvm::Type* ret_type = fname2ret_type["shape"].first;
+                    llvm::Value* llvm_ret_ptr = builder->CreateAlloca(ret_type);
+                    llvm::Value* llvm_size = builder->CreateAlloca(llvm::Type::getInt32Ty(context), nullptr);
+                    builder->CreateStore(llvm::ConstantInt::get(context, llvm::APInt(32, 32)), llvm_size);
+                    llvm::Value* first_ptr = arr_descr->get_pointer_to_data(llvm_ret_ptr);
+                    llvm::PointerType* first_ptr2ptr_type = static_cast<llvm::PointerType*>(first_ptr->getType());
+                    llvm::PointerType* first_ptr_type = static_cast<llvm::PointerType*>(first_ptr2ptr_type->getElementType());
+                    llvm::Value* arr_first = builder->CreateAlloca(first_ptr_type->getElementType(),
+                                                                    builder->CreateLoad(llvm_size));
+                    builder->CreateStore(arr_first, first_ptr);
+                    llvm::Value* llvm_ndims = builder->CreateAlloca(llvm::Type::getInt32Ty(context), nullptr);
+                    builder->CreateStore(llvm::ConstantInt::get(context, llvm::APInt(32, 32)), llvm_ndims);
+                    llvm::Value* dim_des_first = builder->CreateAlloca(arr_descr->get_dim_des(),
+                                                                        builder->CreateLoad(llvm_ndims));
+                    llvm::Value* dim_des_val = llvm_utils->create_gep(llvm_ret_ptr, 2);
+                    builder->CreateStore(dim_des_first, dim_des_val);
+                    dim_des_val = builder->CreateLoad(dim_des_val);
+                    llvm::Value* ret_ptr = llvm_utils->create_gep(arg_struct, 2);
+                    builder->CreateStore(llvm_ret_ptr, ret_ptr);
+                }
             } else if( name == "lbound" || name == "ubound" ) {
                 ASR::Variable_t *arg = EXPR2VAR(x.m_args[0].m_value);
                 uint32_t h = get_hash((ASR::asr_t*)arg);
@@ -4086,7 +4186,7 @@ Result<std::unique_ptr<LLVMModule>> asr_to_llvm(ASR::TranslationUnit_t &asr,
     pass_replace_class_constructor(al, asr);
     pass_replace_implied_do_loops(al, asr, rl_path);
     pass_replace_arr_slice(al, asr, rl_path);
-    pass_replace_array_op(al, asr, rl_path);
+    // pass_replace_array_op(al, asr, rl_path);
     pass_replace_print_arr(al, asr, rl_path);
     pass_replace_do_loops(al, asr);
     pass_replace_forall(al, asr);
