@@ -56,15 +56,30 @@ class ASRDeserializationVisitor :
 #endif
         public ASR::DeserializationBaseVisitor<ASRDeserializationVisitor>
 {
+private:
+    Allocator& al;
 public:
-    ASRDeserializationVisitor(Allocator &al, const std::string &s,
+    std::map<std::string, std::pair<std::string, uint64_t>> symname2symtabid;
+
+    ASRDeserializationVisitor(Allocator &al_, const std::string &s,
         bool load_symtab_id) :
 #ifdef WITH_LFORTRAN_BINARY_MODFILES
             BinaryReader(s),
 #else
             TextReader(s),
 #endif
-            DeserializationBaseVisitor(al, load_symtab_id) {}
+            DeserializationBaseVisitor(al_, load_symtab_id),
+            al(al_) {}
+
+    std::string get_unique_name(std::string& symname) {
+        std::string new_symname = symname;
+        uint64_t i = 0;
+        while( symname2symtabid.find(new_symname) != symname2symtabid.end() ) {
+            new_symname = symname + std::to_string(i);
+            i += 1;
+        }
+        return new_symname;
+    }
 
     bool read_bool() {
         uint8_t b = read_int8();
@@ -101,7 +116,19 @@ public:
         uint64_t symtab_id = read_int64();
         uint64_t symbol_type = read_int8();
         std::string symbol_name  = read_string();
-        LFORTRAN_ASSERT(id_symtab_map.find(symtab_id) != id_symtab_map.end());
+        if( id_symtab_map.find(symtab_id) == id_symtab_map.end() ) {
+            Location dummy_loc;
+            dummy_loc.first = 0;
+            dummy_loc.last = 0;
+            std::string newsymname = get_unique_name(symbol_name);
+            symname2symtabid[newsymname] = std::make_pair(symbol_name, symtab_id);
+            return ASR::down_cast<ASR::symbol_t>(ASR::make_Variable_t(
+                        al, dummy_loc, nullptr, s2c(al, newsymname),
+                        ASR::intentType::Unspecified, nullptr, nullptr,
+                        ASR::storage_typeType::Default, nullptr,
+                        ASR::abiType::Intrinsic, ASR::accessType::Private,
+                        ASR::presenceType::Optional, false));
+        }
         SymbolTable *symtab = id_symtab_map[symtab_id];
         if (symtab->scope.find(symbol_name) == symtab->scope.end()) {
             // Symbol is not in the symbol table yet. We construct an empty
@@ -226,6 +253,39 @@ public:
 
 };
 
+class PopulateMissingSymbols : public BaseWalkVisitor<PopulateMissingSymbols>
+{
+
+public:
+
+    std::map<std::string, std::pair<std::string, uint64_t>>& symname2symtabid;
+    std::map<uint64_t, SymbolTable*>& id_symtab_map;
+
+    PopulateMissingSymbols(std::map<std::string, std::pair<std::string, uint64_t>>& name2id,
+                           std::map<uint64_t, SymbolTable*>& id_symtab_map_) : symname2symtabid(name2id),
+    id_symtab_map(id_symtab_map_)
+    {}
+
+    void visit_Var(const Var_t &x) {
+        Var_t& xx = const_cast<Var_t&>(x);
+        if( ASR::is_a<ASR::Variable_t>(*x.m_v) ) {
+            ASR::Variable_t* x_v = ASR::down_cast<ASR::Variable_t>(x.m_v);
+            std::string x_v_name = std::string(x_v->m_name);
+            if( x_v->m_parent_symtab == nullptr &&
+                symname2symtabid.find(x_v_name) != symname2symtabid.end() ) {
+                SymbolTable* symtab = id_symtab_map[symname2symtabid[x_v_name].second];
+                ASR::symbol_t* correct_sym = symtab->resolve_symbol(symname2symtabid[x_v_name].first);
+                if( correct_sym ) {
+                    xx.m_v = correct_sym;
+                } else {
+                    throw LFortranException("Unable to find symbol for " + x_v_name);
+                }
+            }
+        }
+    }
+
+};
+
 class FixExternalSymbolsVisitor : public BaseWalkVisitor<FixExternalSymbolsVisitor>
 {
 private:
@@ -309,6 +369,9 @@ ASR::asr_t* deserialize_asr(Allocator &al, const std::string &s,
     // Also set the `asr_owner` member correctly for all symbol tables
     ASR::FixParentSymtabVisitor p;
     p.visit_TranslationUnit(*tu);
+
+    ASR::PopulateMissingSymbols pms(v.symname2symtabid, v.id_symtab_map);
+    pms.visit_TranslationUnit(*tu);
 
     LFORTRAN_ASSERT(asr_verify(*tu, false));
 
