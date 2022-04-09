@@ -432,7 +432,7 @@ class TreeVisitorVisitor(ASDLVisitor):
         self.emit(  "void inc_lindent() {", 1)
         self.emit(      "indent_level++;", 2)
         self.emit(      'indtd += "| ";', 2)
-        self.emit(  "}", 1)        
+        self.emit(  "}", 1)
         self.emit(  "void dec_indent() {", 1)
         self.emit(      "indent_level--;", 2)
         self.emit(      "LFORTRAN_ASSERT(indent_level >= 0);", 2)
@@ -535,9 +535,9 @@ class TreeVisitorVisitor(ASDLVisitor):
                     self.emit("self().visit_%s(*x.m_%s[i]);" % (field.type, field.name), level+1)
                 else:
                     self.emit("self().visit_%s(x.m_%s[i]);" % (field.type, field.name), level+1)
-                self.emit(  'dec_indent();', level+1)      
+                self.emit(  'dec_indent();', level+1)
                 self.emit("}", level)
-            elif field.opt: 
+            elif field.opt:
                 self.emit('s.append("\\n" + indtd + "%s" + "%s=");' % (arr, field.name), 2)
                 if last:
                     self.emit('last = true;', 2)
@@ -562,7 +562,7 @@ class TreeVisitorVisitor(ASDLVisitor):
                     self.emit('s.append("\\n" + indtd + "%s" + "%s=");' % (arr, field.name), level)
                     self.emit("for (size_t i=0; i<x.n_%s; i++) {" % field.name, level)
                     self.emit(  "s.append(x.m_%s[i]);" % (field.name), level+1)
-                    self.emit(  'if (i < x.n_%s-1) s.append(" ");' % (field.name), level+1)            
+                    self.emit(  'if (i < x.n_%s-1) s.append(" ");' % (field.name), level+1)
                     self.emit("}", level)
                 else:
                     if field.opt:
@@ -587,7 +587,7 @@ class TreeVisitorVisitor(ASDLVisitor):
                 self.emit(  'last = i == x.n_%s-1;' % field.name, level+1)
                 self.emit(  'attached = false;', level+1)
                 self.emit(  "self().visit_%s(*x.m_%s[i]);" % (mod_name, field.name), level+1)
-                self.emit(  'dec_indent();', level+1)   
+                self.emit(  'dec_indent();', level+1)
                 self.emit("}", level)
             elif field.type == "symbol_table":
                 assert not field.opt
@@ -1101,6 +1101,10 @@ class PickleVisitorVisitor(ASDLVisitor):
 
 class SerializationVisitorVisitor(ASDLVisitor):
 
+    def __init__(self, stream, data, is_asr):
+        super(SerializationVisitorVisitor, self).__init__(stream, data)
+        self.is_asr = is_asr
+
     def visitModule(self, mod):
         self.emit("/" + "*"*78 + "/")
         self.emit("// Serialization Visitor base class")
@@ -1111,6 +1115,21 @@ class SerializationVisitorVisitor(ASDLVisitor):
         self.emit("private:")
         self.emit(  "Derived& self() { return static_cast<Derived&>(*this); }", 1)
         self.emit("public:")
+        if self.is_asr:
+            self.emit("bool is_Var_of_given_type(ASR::expr_t* var_expr, ASR::ttypeType required_type) {", 1)
+            self.emit("if( !ASR::is_a<ASR::Var_t>(*var_expr) ) {", 2)
+            self.emit("    return false;", 2)
+            self.emit("}", 2)
+            self.emit("")
+            self.emit("ASR::Var_t* var = ASR::down_cast<ASR::Var_t>(var_expr);", 2)
+            self.emit("if( var->m_v->type != ASR::symbolType::Variable ) {", 2)
+            self.emit("    return false;", 2)
+            self.emit("}", 2)
+            self.emit("")
+            self.emit("ASR::Variable_t* variable = ASR::down_cast<ASR::Variable_t>(var->m_v);", 2)
+            self.emit("return variable->m_type->type == required_type;", 2)
+            self.emit("}", 1)
+            self.emit("")
         self.mod = mod
         super(SerializationVisitorVisitor, self).visitModule(mod)
         self.emit("};")
@@ -1237,12 +1256,46 @@ class SerializationVisitorVisitor(ASDLVisitor):
                     self.emit('    self().write_string(a.first);', level)
                     self.emit('    this->visit_symbol(*a.second);', level)
                     self.emit('}', level)
-                    self.emit('for (auto &a : x.m_%s->scope) {' % field.name, level)
-                    self.emit('    if (ASR::is_a<ASR::Subroutine_t>(*a.second) || ASR::is_a<ASR::Function_t>(*a.second)) {', level)
-                    self.emit('        self().write_string(a.first);', level)
-                    self.emit('        this->visit_symbol(*a.second);', level)
-                    self.emit('    }', level)
-                    self.emit('}', level)
+                    if self.is_asr:
+                        self.emit('for (auto &a : x.m_%s->scope) {' % field.name, level)
+                        self.emit('    if (ASR::is_a<ASR::Function_t>(*a.second)) {', level)
+                        self.emit('        ASR::Function_t* a_func = ASR::down_cast<ASR::Function_t>(a.second);', level)
+                        self.emit('        if (is_Var_of_given_type(a_func->m_return_var, ASR::ttypeType::Integer)) {', level)
+                        self.emit('        self().write_string(a.first);', level + 1)
+                        self.emit('        this->visit_symbol(*a.second);', level + 1)
+                        self.emit('        }', level)
+                        self.emit('    }', level)
+                        self.emit('}', level)
+                        self.emit('for (auto &a : x.m_%s->scope) {' % field.name, level)
+                        self.emit('    if (ASR::is_a<ASR::Function_t>(*a.second)) {', level)
+                        self.emit('        ASR::Function_t* a_func = ASR::down_cast<ASR::Function_t>(a.second);', level)
+                        self.emit('        if (is_Var_of_given_type(a_func->m_return_var, ASR::ttypeType::Character)) {', level)
+                        self.emit('        self().write_string(a.first);', level + 1)
+                        self.emit('        this->visit_symbol(*a.second);', level + 1)
+                        self.emit('        }', level)
+                        self.emit('    }', level)
+                        self.emit('}', level)
+                        self.emit('for (auto &a : x.m_%s->scope) {' % field.name, level)
+                        self.emit('    if (ASR::is_a<ASR::Subroutine_t>(*a.second)) {', level)
+                        self.emit('        self().write_string(a.first);', level)
+                        self.emit('        this->visit_symbol(*a.second);', level)
+                        self.emit('    }', level)
+                        self.emit('    else if (ASR::is_a<ASR::Function_t>(*a.second)) {', level)
+                        self.emit('        ASR::Function_t* a_func = ASR::down_cast<ASR::Function_t>(a.second);', level)
+                        self.emit('        if (!is_Var_of_given_type(a_func->m_return_var, ASR::ttypeType::Character) && ', level)
+                        self.emit('            !is_Var_of_given_type(a_func->m_return_var, ASR::ttypeType::Integer)) {', level)
+                        self.emit('        self().write_string(a.first);', level + 1)
+                        self.emit('        this->visit_symbol(*a.second);', level + 1)
+                        self.emit('        }', level)
+                        self.emit('    }', level)
+                        self.emit('}', level)
+                    else:
+                        self.emit('for (auto &a : x.m_%s->scope) {' % field.name, level)
+                        self.emit('    if (ASR::is_a<ASR::Subroutine_t>(*a.second) || ASR::is_a<ASR::Function_t>(*a.second)) {', level)
+                        self.emit('        self().write_string(a.first);', level)
+                        self.emit('        this->visit_symbol(*a.second);', level)
+                        self.emit('    }', level)
+                        self.emit('}', level)
             elif field.type == "string" and not field.seq:
                 if field.opt:
                     self.emit("if (x.m_%s) {" % field.name, 2)
@@ -1713,7 +1766,10 @@ def main(argv):
     try:
         fp.write(HEAD % subs)
         for visitor in visitors:
-            visitor(fp, data).visit(mod)
+            if visitor == SerializationVisitorVisitor:
+                visitor(fp, data, is_asr).visit(mod)
+            else:
+                visitor(fp, data).visit(mod)
             fp.write("\n\n")
         if not is_asr:
             fp.write(FOOT % subs)
