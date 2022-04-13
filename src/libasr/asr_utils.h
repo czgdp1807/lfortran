@@ -259,6 +259,9 @@ static inline char *symbol_name(const ASR::symbol_t *f)
         case ASR::symbolType::CustomOperator: {
             return ASR::down_cast<ASR::CustomOperator_t>(f)->m_name;
         }
+        case ASR::symbolType::AssociateBlock: {
+            return ASR::down_cast<ASR::AssociateBlock_t>(f)->m_name;
+        }
         default : throw LFortranException("Not implemented");
     }
 }
@@ -295,6 +298,9 @@ static inline SymbolTable *symbol_parent_symtab(const ASR::symbol_t *f)
         }
         case ASR::symbolType::CustomOperator: {
             return ASR::down_cast<ASR::CustomOperator_t>(f)->m_parent_symtab;
+        }
+        case ASR::symbolType::AssociateBlock: {
+            return ASR::down_cast<ASR::AssociateBlock_t>(f)->m_symtab->parent;
         }
         default : throw LFortranException("Not implemented");
     }

@@ -199,6 +199,7 @@ stmt
     | WhileLoop(expr test, stmt* body)
     | Nullify(symbol* vars)
     | Flush(int label, expr unit, expr? err, expr? iomsg, expr? iostat)
+    | AssociateBlockCall(symbol m)
 
 
 expr

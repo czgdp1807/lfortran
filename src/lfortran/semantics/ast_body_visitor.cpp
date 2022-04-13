@@ -476,14 +476,18 @@ public:
         current_scope = new_scope;
         Vec<ASR::stmt_t*> body;
         body.reserve(al, x.n_body);
+        Vec<ASR::stmt_t*>* current_body_copy = current_body;
         current_body = &body;
         transform_stmts(body, x.n_body, x.m_body);
+        current_body = current_body_copy;
         current_scope = current_scope_copy;
         std::string name = current_scope->get_unique_name("associate_block");
         ASR::asr_t* associate_block = ASR::make_AssociateBlock_t(al, x.base.base.loc,
                                                                  new_scope, s2c(al, name),
                                                                  body.p, body.size());
         current_scope->scope[name] = ASR::down_cast<ASR::symbol_t>(associate_block);
+        tmp = ASR::make_AssociateBlockCall_t(al, x.base.base.loc, ASR::down_cast<ASR::symbol_t>(associate_block));
+        current_body->push_back(al, ASRUtils::STMT(tmp));
     }
 
     void visit_Allocate(const AST::Allocate_t& x) {
