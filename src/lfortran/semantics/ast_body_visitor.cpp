@@ -458,23 +458,32 @@ public:
         SymbolTable* new_scope = al.make_new<SymbolTable>(current_scope);
         for( size_t i = 0; i < x.n_syms; i++ ) {
             this->visit_expr(*x.m_syms[i].m_initializer);
+            ASR::expr_t* tmp_expr = LFortran::ASRUtils::EXPR(tmp);
             std::string name = to_lower(x.m_syms[i].m_name);
             char *name_c = s2c(al, name);
             ASR::asr_t *v = ASR::make_Variable_t(al, x.base.base.loc, new_scope,
-                                                 name_c, ASR::intentType::AssociateBlock,
-                                                 LFortran::ASRUtils::EXPR(tmp), nullptr,
+                                                 name_c, ASR::intentType::Local,
+                                                 tmp_expr, nullptr,
                                                  ASR::storage_typeType::Default,
-                                                 nullptr, ASR::abiType::Source,
+                                                 ASRUtils::expr_type(tmp_expr),
+                                                 ASR::abiType::Source,
                                                  ASR::accessType::Private,
                                                  ASR::presenceType::Required,
                                                  false);
-            new_scope->scope[name_c] = ASR::down_cast<ASR::symbol_t>(v);
+            new_scope->scope[name] = ASR::down_cast<ASR::symbol_t>(v);
         }
         SymbolTable* current_scope_copy = current_scope;
         current_scope = new_scope;
-        transform_stmts(*current_body, x.n_body, x.m_body);
-        current_scope->scope.clear();
+        Vec<ASR::stmt_t*> body;
+        body.reserve(al, x.n_body);
+        current_body = &body;
+        transform_stmts(body, x.n_body, x.m_body);
         current_scope = current_scope_copy;
+        std::string name = current_scope->get_unique_name("associate_block");
+        ASR::asr_t* associate_block = ASR::make_AssociateBlock_t(al, x.base.base.loc,
+                                                                 new_scope, s2c(al, name),
+                                                                 body.p, body.size());
+        current_scope->scope[name] = ASR::down_cast<ASR::symbol_t>(associate_block);
     }
 
     void visit_Allocate(const AST::Allocate_t& x) {

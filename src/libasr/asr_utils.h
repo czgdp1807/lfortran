@@ -335,6 +335,9 @@ static inline SymbolTable *symbol_symtab(const ASR::symbol_t *f)
             return nullptr;
             //throw LFortranException("ClassProcedure does not have a symtab");
         }
+        case ASR::symbolType::AssociateBlock: {
+            return ASR::down_cast<ASR::AssociateBlock_t>(f)->m_symtab;
+        }
         default : throw LFortranException("Not implemented");
     }
 }
