@@ -146,9 +146,9 @@ public:
             default:
                 break;
         }
-        if (ASR::is_a<ASR::Pointer_t>(*x.m_type)) {
-            new_type = ASRUtils::TYPE(ASR::make_Pointer_t(al, x.base.base.loc, new_type));
-        }
+        // if (ASR::is_a<ASR::Pointer_t>(*x.m_type)) {
+        //     new_type = ASRUtils::TYPE(ASR::make_Pointer_t(al, x.base.base.loc, new_type));
+        // }
 
         return new_type;
     }

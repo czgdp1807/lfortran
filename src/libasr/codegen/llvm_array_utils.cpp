@@ -260,6 +260,12 @@ namespace LFortran {
 
         llvm::Value* SimpleCMODescriptor::
         get_pointer_to_dimension_descriptor_array(llvm::Value* arr) {
+            if( arr->getType()->isPointerTy() ) {
+                llvm::Type* arr_underlying = static_cast<llvm::PointerType*>(arr->getType())->getElementType();
+                if( arr_underlying->isPointerTy() ) {
+                    arr = builder->CreateLoad(arr);
+                }
+            }
             return LLVM::CreateLoad(*builder, llvm_utils->create_gep(arr, 2));
         }
 
@@ -376,6 +382,12 @@ namespace LFortran {
 
         void SimpleCMODescriptor::fill_dimension_descriptor(
             llvm::Value* arr, int n_dims) {
+            if( arr->getType()->isPointerTy() ) {
+                llvm::Type* arr_underlying = static_cast<llvm::PointerType*>(arr->getType())->getElementType();
+                if( arr_underlying->isPointerTy() ) {
+                    arr = builder->CreateLoad(arr);
+                }
+            }
             llvm::Value* dim_des_val = llvm_utils->create_gep(arr, 2);
             llvm::Value* llvm_ndims = builder->CreateAlloca(llvm::Type::getInt32Ty(context), nullptr);
             builder->CreateStore(llvm::ConstantInt::get(context, llvm::APInt(32, n_dims)), llvm_ndims);
@@ -391,6 +403,12 @@ namespace LFortran {
         }
 
         llvm::Value* SimpleCMODescriptor::get_pointer_to_data(llvm::Value* arr) {
+            if( arr->getType()->isPointerTy() ) {
+                llvm::Type* arr_underlying = static_cast<llvm::PointerType*>(arr->getType())->getElementType();
+                if( arr_underlying->isPointerTy() ) {
+                    arr = builder->CreateLoad(arr);
+                }
+            }
             return llvm_utils->create_gep(arr, 0);
         }
 
@@ -417,6 +435,12 @@ namespace LFortran {
         llvm::Value* SimpleCMODescriptor::cmo_convertor_single_element(
             llvm::Value* arr, std::vector<llvm::Value*>& m_args,
             int n_args, bool check_for_bounds) {
+            if( arr->getType()->isPointerTy() ) {
+                llvm::Type* arr_underlying = static_cast<llvm::PointerType*>(arr->getType())->getElementType();
+                if( arr_underlying->isPointerTy() ) {
+                    arr = builder->CreateLoad(arr);
+                }
+            }
             llvm::Value* dim_des_arr_ptr = LLVM::CreateLoad(*builder, llvm_utils->create_gep(arr, 2));
             llvm::Value* prod = llvm::ConstantInt::get(context, llvm::APInt(32, 1));
             llvm::Value* idx = llvm::ConstantInt::get(context, llvm::APInt(32, 0));
@@ -452,6 +476,12 @@ namespace LFortran {
         }
 
         void SimpleCMODescriptor::set_is_allocated_flag(llvm::Value* array, uint64_t status) {
+            if( array->getType()->isPointerTy() ) {
+                llvm::Type* arr_underlying = static_cast<llvm::PointerType*>(array->getType())->getElementType();
+                if( arr_underlying->isPointerTy() ) {
+                    array = builder->CreateLoad(array);
+                }
+            }
             llvm::Value* is_allocated_flag = llvm_utils->create_gep(array, 3);
             builder->CreateStore(llvm::ConstantInt::get(context, llvm::APInt(1, status)),
                                     is_allocated_flag);
