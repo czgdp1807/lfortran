@@ -1731,9 +1731,10 @@ public:
         if( kind_expr ) {
             this->visit_expr(*kind_expr);
             kind = ASRUtils::EXPR(tmp);
-            if( ASRUtils::expr_value(kind) ) {
+            ASR::expr_t* kind_value = ASRUtils::expr_value(kind);
+            if( kind_value ) {
                 type = ASRUtils::TYPE(ASR::make_Integer_t(al, x.base.base.loc,
-                                        ASR::down_cast<ASR::IntegerConstant_t>(kind)->m_n ,
+                                        ASR::down_cast<ASR::IntegerConstant_t>(kind_value)->m_n ,
                                         nullptr, 0));
             }
         }
