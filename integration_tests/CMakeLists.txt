@@ -204,7 +204,7 @@ RUN(NAME floor_01 LABELS gfortran llvm) # floor body
 RUN(NAME floor_02 LABELS gfortran llvm) # floor symboltable
 RUN(NAME floor_03 LABELS gfortran)
 
-RUN(NAME modulo_01 LABELS gfortran llvm)
+RUN(NAME modulo_01 LABELS gfortran)
 
 RUN(NAME int_01 LABELS gfortran llvm) # int body
 RUN(NAME int_02 LABELS gfortran) # int symboltable
@@ -230,10 +230,10 @@ RUN(NAME intrinsics_16 LABELS gfortran) # aimag
 RUN(NAME intrinsics_17 LABELS gfortran llvm) # exp, log, erf
 RUN(NAME intrinsics_18 LABELS gfortran llvm)
 RUN(NAME intrinsics_18c LABELS gfortran llvm)
-RUN(NAME intrinsics_19 LABELS gfortran llvm)
+RUN(NAME intrinsics_19 LABELS gfortran)
 RUN(NAME intrinsics_19c LABELS gfortran llvm)
 RUN(NAME intrinsics_20 LABELS gfortran llvm)
-RUN(NAME intrinsics_21 LABELS gfortran llvm)
+RUN(NAME intrinsics_21 LABELS gfortran)
 RUN(NAME intrinsics_22 LABELS gfortran llvm)
 RUN(NAME intrinsics_23 LABELS gfortran llvm) # huge
 RUN(NAME intrinsics_24 LABELS gfortran llvm) # System_clock
@@ -243,7 +243,7 @@ RUN(NAME intrinsics_27 LABELS gfortran)
 RUN(NAME intrinsics_28 LABELS gfortran llvm)
 RUN(NAME intrinsics_29 LABELS gfortran llvm) # random_number
 RUN(NAME intrinsics_30 LABELS gfortran llvm)
-RUN(NAME intrinsics_31 LABELS gfortran llvm)
+RUN(NAME intrinsics_31 LABELS gfortran)
 RUN(NAME intrinsics_32 LABELS gfortran)
 RUN(NAME intrinsics_33 LABELS gfortran llvm)
 RUN(NAME intrinsics_34 LABELS gfortran llvm)
@@ -486,7 +486,7 @@ RUN(NAME bits_05 LABELS gfortran llvm)
 RUN(NAME cpu_time_01 LABELS gfortran llvm)
 RUN(NAME boz_01 LABELS gfortran llvm)
 
-RUN(NAME flip_sign LABELS gfortran llvm)
+RUN(NAME flip_sign LABELS gfortran)
 RUN(NAME div_to_mul LABELS gfortran llvm)
 RUN(NAME fma LABELS gfortran llvm)
 RUN(NAME loop_unroll_small LABELS gfortran llvm)
