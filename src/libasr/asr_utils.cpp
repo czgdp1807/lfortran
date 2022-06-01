@@ -701,6 +701,9 @@ bool argument_types_match(const Vec<ASR::call_arg_t>& args,
     if (args.size() <= sub.n_args) {
         size_t i;
         for (i = 0; i < args.size(); i++) {
+            if( args[i].m_value == nullptr ) {
+                continue ;
+            }
             ASR::Variable_t *v = LFortran::ASRUtils::EXPR2VAR(sub.m_args[i]);
             ASR::ttype_t *arg1 = LFortran::ASRUtils::expr_type(args[i].m_value);
             ASR::ttype_t *arg2 = v->m_type;
