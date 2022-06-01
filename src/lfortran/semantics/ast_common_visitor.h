@@ -1769,7 +1769,7 @@ public:
         ASR::ttype_t *type = ASRUtils::expr_type(matrix);
         ASR::dimension_t* matrix_dims = nullptr;
         int matrix_rank = ASRUtils::extract_dimensions_from_ttype(type, matrix_dims);
-        if( matrix_rank != 2 ) {
+        if( matrix_rank != 2 && matrix_rank != 0 ) {
             throw SemanticError("transpose accepts arrays "
                                 "of rank 2 only, provided an array "
                                 "with rank, " + std::to_string(matrix_rank),
@@ -1777,8 +1777,23 @@ public:
         }
         Vec<ASR::dimension_t> reversed_dims;
         reversed_dims.reserve(al, 2);
-        reversed_dims.push_back(al, matrix_dims[1]);
-        reversed_dims.push_back(al, matrix_dims[0]);
+        if( matrix_rank == 2 ) {
+            reversed_dims.push_back(al, matrix_dims[1]);
+            reversed_dims.push_back(al, matrix_dims[0]);
+        } else {
+            ASR::ttype_t *int32_type = ASRUtils::TYPE(ASR::make_Integer_t(al, x.base.base.loc,
+                                                                      4, nullptr, 0));
+            ASR::expr_t* one = ASRUtils::EXPR(ASR::make_IntegerConstant_t(al, x.base.base.loc, 1, int32_type));
+            ASR::expr_t* two = ASRUtils::EXPR(ASR::make_IntegerConstant_t(al, x.base.base.loc, 2, int32_type));
+            ASR::expr_t* dim0_expr = ASRUtils::EXPR(ASR::make_ArraySize_t(al, x.base.base.loc, matrix, one, int32_type, nullptr));
+            ASR::expr_t* dim1_expr = ASRUtils::EXPR(ASR::make_ArraySize_t(al, x.base.base.loc, matrix, two, int32_type, nullptr));
+            ASR::dimension_t dim0;
+            dim0.m_start = one, dim0.m_end = dim0_expr, dim0.loc = dim0_expr->base.loc;
+            ASR::dimension_t dim1;
+            dim1.m_start = one, dim1.m_end = dim1_expr, dim1.loc = dim1_expr->base.loc;
+            reversed_dims.push_back(al, dim1);
+            reversed_dims.push_back(al, dim0);
+        }
         ASR::ttype_t* ret_type = ASRUtils::duplicate_type(al, type, &reversed_dims);
         return ASR::make_ArrayTranspose_t(al, x.base.base.loc, matrix, ret_type, nullptr);
     }
