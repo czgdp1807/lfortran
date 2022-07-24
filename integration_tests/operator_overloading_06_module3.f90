@@ -5,3 +5,6 @@ implicit none
 contains
 
 end submodule
+
+program main
+end program
