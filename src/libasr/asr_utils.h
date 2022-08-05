@@ -1656,6 +1656,22 @@ static inline ASR::expr_t* compute_length_from_start_end(Allocator& al, ASR::exp
                           nullptr));
 }
 
+template <typename T>
+static inline bool is_pass_array_by_data_possible(T& x, std::vector<size_t>& v) {
+    ASR::ttype_t* typei = nullptr;
+    ASR::dimension_t* dims = nullptr;
+    for( size_t i = 0; i < x.n_args; i++ ) {
+        typei = ASRUtils::expr_type(x.m_args[i]);
+        int n_dims = ASRUtils::extract_dimensions_from_ttype(typei, dims);
+        ASR::Variable_t* argi = ASRUtils::EXPR2VAR(x.m_args[i]);
+        if( ASRUtils::is_dimension_empty(dims, n_dims) &&
+            argi->m_intent == ASRUtils::intent_in ) {
+            v.push_back(i);
+        }
+    }
+    return v.size() > 0;
+}
+
 } // namespace ASRUtils
 
 } // namespace LFortran

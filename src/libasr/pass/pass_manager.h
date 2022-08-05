@@ -48,7 +48,7 @@ namespace LCompilers {
         flip_sign, div_to_mul, fma, sign_from_value,
         inline_function_calls, loop_unroll, dead_code_removal,
         forall, select_case, loop_vectorise,
-        array_dim_intrinsics_update
+        array_dim_intrinsics_update, pass_array_by_data
     };
 
     class PassManager {
@@ -77,6 +77,7 @@ namespace LCompilers {
             {"select_case", ASRPass::select_case},
             {"loop_vectorise", ASRPass::loop_vectorise},
             {"array_dim_intrinsics_update", ASRPass::array_dim_intrinsics_update},
+            {"pass_array_by_data", ASRPass::pass_array_by_data}
         };
 
         bool is_fast;
@@ -163,6 +164,10 @@ namespace LCompilers {
                         LFortran::pass_update_array_dim_intrinsic_calls(al, *asr);
                         break ;
                     }
+                    case (ASRPass::pass_array_by_data): {
+                        LFortran::pass_array_by_data(al, *asr);
+                        break ;
+                    }
                 }
             }
         }
@@ -174,6 +179,7 @@ namespace LCompilers {
                 ASRPass::global_stmts,
                 ASRPass::class_constructor,
                 ASRPass::implied_do_loops,
+                ASRPass::pass_array_by_data,
                 ASRPass::arr_slice,
                 ASRPass::array_op,
                 ASRPass::print_arr,
@@ -188,6 +194,7 @@ namespace LCompilers {
                 ASRPass::global_stmts,
                 ASRPass::class_constructor,
                 ASRPass::implied_do_loops,
+                ASRPass::pass_array_by_data,
                 ASRPass::arr_slice,
                 ASRPass::array_op,
                 ASRPass::print_arr,
