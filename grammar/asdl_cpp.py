@@ -903,12 +903,18 @@ class ExprStmtDuplicatorVisitor(ASDLVisitor):
 
     def visitField(self, field):
         arguments = None
-        if field.type == "expr" or field.type == "stmt" or field.type == "symbol" or field.type == "call_arg":
+        if (field.type == "expr" or
+            field.type == "stmt" or
+            field.type == "symbol" or
+            field.type == "call_arg" or
+            field.type == "do_loop_head" or
+            field.type == "array_index"):
             level = 2
             if field.seq:
                 self.used = True
                 pointer_char = ''
-                if field.type != "call_arg":
+                if (field.type != "call_arg" and
+                    field.type != "array_index"):
                     pointer_char = '*'
                 self.emit("Vec<%s_t%s> m_%s;" % (field.type, pointer_char, field.name), level)
                 self.emit("m_%s.reserve(al, x->n_%s);" % (field.name, field.name), level)
@@ -920,6 +926,13 @@ class ExprStmtDuplicatorVisitor(ASDLVisitor):
                     self.emit("    call_arg_copy.loc = x->m_%s[i].loc;"%(field.name), level)
                     self.emit("    call_arg_copy.m_value = duplicate_expr(x->m_%s[i].m_value);"%(field.name), level)
                     self.emit("    m_%s.push_back(al, call_arg_copy);"%(field.name), level)
+                elif field.type == "array_index":
+                    self.emit("    ASR::array_index_t array_index_copy;", level)
+                    self.emit("    array_index_copy.loc = x->m_%s[i].loc;"%(field.name), level)
+                    self.emit("    array_index_copy.m_left = duplicate_expr(x->m_%s[i].m_left);"%(field.name), level)
+                    self.emit("    array_index_copy.m_right = duplicate_expr(x->m_%s[i].m_right);"%(field.name), level)
+                    self.emit("    array_index_copy.m_step = duplicate_expr(x->m_%s[i].m_step);"%(field.name), level)
+                    self.emit("    m_%s.push_back(al, array_index_copy);"%(field.name), level)
                 else:
                     self.emit("    m_%s.push_back(al, duplicate_%s(x->m_%s[i]));" % (field.name, field.type, field.name), level)
                 self.emit("}", level)
@@ -928,6 +941,19 @@ class ExprStmtDuplicatorVisitor(ASDLVisitor):
                 self.used = True
                 if field.type == "symbol":
                     self.emit("%s_t* m_%s = x->m_%s;" % (field.type, field.name, field.name), level)
+                elif field.type == "do_loop_head":
+                    self.emit("ASR::do_loop_head_t m_head;", level)
+                    self.emit("m_head.loc = x->m_head.loc;", level)
+                    self.emit("m_head.m_v = duplicate_expr(x->m_head.m_v);", level)
+                    self.emit("m_head.m_start = duplicate_expr(x->m_head.m_start);", level)
+                    self.emit("m_head.m_end = duplicate_expr(x->m_head.m_end);", level)
+                    self.emit("m_head.m_increment = duplicate_expr(x->m_head.m_increment);", level)
+                elif field.type == "array_index":
+                    self.emit("ASR::array_index_t m_%s;"%(field.name), level)
+                    self.emit("m_%s.loc = x->m_%s.loc;"%(field.name, field.name), level)
+                    self.emit("m_%s.m_left = duplicate_expr(x->m_%s.m_left);"%(field.name, field.name), level)
+                    self.emit("m_%s.m_right = duplicate_expr(x->m_%s.m_right);"%(field.name, field.name), level)
+                    self.emit("m_%s.m_step = duplicate_expr(x->m_%s.m_step);"%(field.name, field.name), level)
                 else:
                     self.emit("%s_t* m_%s = duplicate_%s(x->m_%s);" % (field.type, field.name, field.type, field.name), level)
                 arguments = ("m_" + field.name, )

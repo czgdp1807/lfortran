@@ -36,6 +36,7 @@
 #include <libasr/pass/select_case.h>
 #include <libasr/pass/loop_vectorise.h>
 #include <libasr/pass/update_array_dim_intrinsic_calls.h>
+#include <libasr/pass/pass_array_by_data.h>
 
 #include <map>
 #include <vector>
