@@ -800,15 +800,16 @@ class ExprStmtDuplicatorVisitor(ASDLVisitor):
         self.emit("/" + "*"*78 + "/")
         self.emit("// Expression and statement Duplicator class")
         self.emit("")
-        self.emit("class ExprStmtDuplicator {")
-        self.emit("private:")
-        self.emit("    Allocator& al;")
-        self.emit("")
+        self.emit("template <class Derived>")
+        self.emit("class BaseExprStmtDuplicator {")
         self.emit("public:")
+        self.emit("    Derived& self() { return static_cast<Derived&>(*this); }")
+        self.emit("")
+        self.emit("    Allocator &al;")
         self.emit("    bool success;")
         self.emit("    bool allow_procedure_calls;")
         self.emit("")
-        self.emit("    ExprStmtDuplicator(Allocator& al_) : al(al_), success(false), allow_procedure_calls(true) {}")
+        self.emit("    BaseExprStmtDuplicator(Allocator& al_) : al(al_), success(false), allow_procedure_calls(true) {}")
         self.emit("")
         self.duplicate_stmt.append(("    ASR::stmt_t* duplicate_stmt(ASR::stmt_t* x) {", 0))
         self.duplicate_stmt.append(("    if( !x ) {", 1))
@@ -887,7 +888,7 @@ class ExprStmtDuplicatorVisitor(ASDLVisitor):
                 self.duplicate_stmt.append(("    success = false;", 4))
                 self.duplicate_stmt.append(("    return nullptr;", 4))
                 self.duplicate_stmt.append(("    }", 3))
-            self.duplicate_stmt.append(("    return down_cast<ASR::stmt_t>(duplicate_%s(down_cast<ASR::%s_t>(x)));" % (name, name), 3))
+            self.duplicate_stmt.append(("    return down_cast<ASR::stmt_t>(self().duplicate_%s(down_cast<ASR::%s_t>(x)));" % (name, name), 3))
             self.duplicate_stmt.append(("    }", 2))
         elif self.is_expr:
             self.duplicate_expr.append(("    case ASR::exprType::%s: {" % name, 2))
@@ -896,7 +897,7 @@ class ExprStmtDuplicatorVisitor(ASDLVisitor):
                 self.duplicate_expr.append(("    success = false;", 4))
                 self.duplicate_expr.append(("    return nullptr;", 4))
                 self.duplicate_expr.append(("    }", 3))
-            self.duplicate_expr.append(("    return down_cast<ASR::expr_t>(duplicate_%s(down_cast<ASR::%s_t>(x)));" % (name, name), 3))
+            self.duplicate_expr.append(("    return down_cast<ASR::expr_t>(self().duplicate_%s(down_cast<ASR::%s_t>(x)));" % (name, name), 3))
             self.duplicate_expr.append(("    }", 2))
         self.emit("}", 1)
         self.emit("")
@@ -924,7 +925,7 @@ class ExprStmtDuplicatorVisitor(ASDLVisitor):
                 elif field.type == "call_arg":
                     self.emit("    ASR::call_arg_t call_arg_copy;", level)
                     self.emit("    call_arg_copy.loc = x->m_%s[i].loc;"%(field.name), level)
-                    self.emit("    call_arg_copy.m_value = duplicate_expr(x->m_%s[i].m_value);"%(field.name), level)
+                    self.emit("    call_arg_copy.m_value = self().duplicate_expr(x->m_%s[i].m_value);"%(field.name), level)
                     self.emit("    m_%s.push_back(al, call_arg_copy);"%(field.name), level)
                 elif field.type == "array_index":
                     self.emit("    ASR::array_index_t array_index_copy;", level)
@@ -934,7 +935,7 @@ class ExprStmtDuplicatorVisitor(ASDLVisitor):
                     self.emit("    array_index_copy.m_step = duplicate_expr(x->m_%s[i].m_step);"%(field.name), level)
                     self.emit("    m_%s.push_back(al, array_index_copy);"%(field.name), level)
                 else:
-                    self.emit("    m_%s.push_back(al, duplicate_%s(x->m_%s[i]));" % (field.name, field.type, field.name), level)
+                    self.emit("    m_%s.push_back(al, self().duplicate_%s(x->m_%s[i]));" % (field.name, field.type, field.name), level)
                 self.emit("}", level)
                 arguments = ("m_" + field.name + ".p", "x->n_" + field.name)
             else:
@@ -955,7 +956,7 @@ class ExprStmtDuplicatorVisitor(ASDLVisitor):
                     self.emit("m_%s.m_right = duplicate_expr(x->m_%s.m_right);"%(field.name, field.name), level)
                     self.emit("m_%s.m_step = duplicate_expr(x->m_%s.m_step);"%(field.name, field.name), level)
                 else:
-                    self.emit("%s_t* m_%s = duplicate_%s(x->m_%s);" % (field.type, field.name, field.type, field.name), level)
+                    self.emit("%s_t* m_%s = self().duplicate_%s(x->m_%s);" % (field.type, field.name, field.type, field.name), level)
                 arguments = ("m_" + field.name, )
         else:
             if field.seq:
@@ -1473,6 +1474,8 @@ class SerializationVisitorVisitor(ASDLVisitor):
         self.emit("void visit_%s(const %s_t &x) {" % (name, name), 1)
         if cons:
             self.emit(    'self().write_int8(x.base.type);', 2)
+            self.emit(    'self().write_int64(x.base.base.loc.first);', 2)
+            self.emit(    'self().write_int64(x.base.base.loc.last);', 2)
         self.used = False
         for n, field in enumerate(fields):
             self.visitField(field, cons, name)
@@ -1567,14 +1570,14 @@ class SerializationVisitorVisitor(ASDLVisitor):
                     self.emit('self().write_int64(x.m_%s->counter);' % field.name, level)
                     self.emit('self().write_int64(x.m_%s->get_scope().size());' % field.name, level)
                     self.emit('for (auto &a : x.m_%s->get_scope()) {' % field.name, level)
-                    self.emit('    if (ASR::is_a<ASR::Subroutine_t>(*a.second) || ASR::is_a<ASR::Function_t>(*a.second)) {', level)
+                    self.emit('    if (ASR::is_a<ASR::Function_t>(*a.second)) {', level)
                     self.emit('        continue;', level)
                     self.emit('    }', level)
                     self.emit('    self().write_string(a.first);', level)
                     self.emit('    this->visit_symbol(*a.second);', level)
                     self.emit('}', level)
                     self.emit('for (auto &a : x.m_%s->get_scope()) {' % field.name, level)
-                    self.emit('    if (ASR::is_a<ASR::Subroutine_t>(*a.second) || ASR::is_a<ASR::Function_t>(*a.second)) {', level)
+                    self.emit('    if (ASR::is_a<ASR::Function_t>(*a.second)) {', level)
                     self.emit('        self().write_string(a.first);', level)
                     self.emit('        this->visit_symbol(*a.second);', level)
                     self.emit('    }', level)
@@ -1901,13 +1904,18 @@ class DeserializationVisitorVisitor(ASDLVisitor):
                                 lines.append("m_%s = nullptr;" % f.name)
                                 lines.append("}")
                     args.append("m_%s" % (f.name))
-        for line in lines:
-            self.emit(line, 2)
 
         self.emit(    'Location loc;', 2)
-        self.emit(    '// FIXME: read loc from the stream', 2)
-        self.emit(    'loc.first=0; loc.last=0;', 2)
-        self.emit(    'return %s::make_%s_t(%s);' % (subs["mod"].upper(), name, ", ".join(args)), 2)
+        self.emit(    'loc.first = self().read_int64();', 2)
+        self.emit(    'loc.last = self().read_int64();', 2)
+        if subs["lcompiler"] == "lfortran":
+            # Set the location to 0 for now, since we do not yet
+            # support multiple files
+            self.emit(    'loc.first = 0;', 2)
+            self.emit(    'loc.last = 0;', 2)
+        for line in lines:
+            self.emit(line, 2)
+        self.emit(    'return %s::make_%s_t(%s);' % (subs["MOD"], name, ", ".join(args)), 2)
         self.emit("}", 1)
 
 class ExprTypeVisitor(ASDLVisitor):
@@ -2167,11 +2175,6 @@ visitors = [ASTNodeVisitor0, ASTNodeVisitor1, ASTNodeVisitor,
 def main(argv):
     if len(argv) == 3:
         def_file, out_file = argv[1:]
-    elif len(argv) == 1:
-        print("Assuming default values of AST.asdl and ast.h")
-        here = os.path.dirname(__file__)
-        def_file = os.path.join(here, "AST.asdl")
-        out_file = os.path.join(here, "..", "src", "lfortran", "ast.h")
     else:
         print("invalid arguments")
         return 2
@@ -2189,6 +2192,9 @@ def main(argv):
     if subs["MOD"] == "LPYTHON":
         subs["MOD"] = "LPython::AST"
         subs["mod"] = "ast"
+        subs["lcompiler"] = "lpython"
+    else:
+        subs["lcompiler"] = "lfortran"
     is_asr = (mod.name.upper() == "ASR")
     fp = open(out_file, "w", encoding="utf-8")
     try:
