@@ -200,7 +200,8 @@ namespace LFortran {
         }
 
         void create_vars(Vec<ASR::expr_t*>& vars, int n_vars, const Location& loc,
-                         Allocator& al, SymbolTable*& current_scope, std::string suffix) {
+                         Allocator& al, SymbolTable*& current_scope, std::string suffix,
+                         ASR::intentType intent) {
             vars.reserve(al, n_vars);
             for( int i = 1; i <= n_vars; i++ ) {
                 Str str_name;
@@ -211,7 +212,7 @@ namespace LFortran {
                 ASR::ttype_t* int32_type = LFortran::ASRUtils::TYPE(ASR::make_Integer_t(al, loc, 4, nullptr, 0));
                 if( current_scope->get_symbol(std::string(var_name)) == nullptr ) {
                     ASR::asr_t* idx_sym = ASR::make_Variable_t(al, loc, current_scope, var_name,
-                                                            ASR::intentType::Local, nullptr, nullptr, ASR::storage_typeType::Default,
+                                                            intent, nullptr, nullptr, ASR::storage_typeType::Default,
                                                             int32_type, ASR::abiType::Source, ASR::accessType::Public,
                                                             ASR::presenceType::Required, false);
                     current_scope->add_symbol(std::string(var_name), ASR::down_cast<ASR::symbol_t>(idx_sym));

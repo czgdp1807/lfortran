@@ -1473,7 +1473,7 @@ class ReplaceArgVisitor: public ASR::BaseExprReplacer<ReplaceArgVisitor> {
 
 };
 
-class ExprStmtDuplicator: public ASR::BaseExprStmtDuplicator<ExprStmtDuplicator> 
+class ExprStmtDuplicator: public ASR::BaseExprStmtDuplicator<ExprStmtDuplicator>
 {
     public:
 
@@ -1677,16 +1677,23 @@ static inline ASR::expr_t* compute_length_from_start_end(Allocator& al, ASR::exp
                           nullptr));
 }
 
-template <typename T>
-static inline bool is_pass_array_by_data_possible(T* x, std::vector<size_t>& v) {
+static inline bool is_pass_array_by_data_possible(ASR::Function_t* x, std::vector<size_t>& v) {
     ASR::ttype_t* typei = nullptr;
     ASR::dimension_t* dims = nullptr;
     for( size_t i = 0; i < x->n_args; i++ ) {
+        if( !ASR::is_a<ASR::Var_t>(*x->m_args[i]) ) {
+            continue;
+        }
+        ASR::Var_t* arg_Var = ASR::down_cast<ASR::Var_t>(x->m_args[i]);
+        if( !ASR::is_a<ASR::Variable_t>(*arg_Var->m_v) ) {
+            continue;
+        }
         typei = ASRUtils::expr_type(x->m_args[i]);
         int n_dims = ASRUtils::extract_dimensions_from_ttype(typei, dims);
         ASR::Variable_t* argi = ASRUtils::EXPR2VAR(x->m_args[i]);
         if( ASRUtils::is_dimension_empty(dims, n_dims) &&
-            argi->m_intent == ASRUtils::intent_in ) {
+            argi->m_intent == ASRUtils::intent_in &&
+            argi->m_storage != ASR::storage_typeType::Allocatable) {
             v.push_back(i);
         }
     }
