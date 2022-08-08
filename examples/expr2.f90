@@ -1,9 +1,18 @@
 program expr2
 implicit none
 
-integer :: x
+integer :: x(5)
+x(2) = 4
+print *, x(2), size(x)
+print *, get_size(x)
 
-x = (2+3)*5
-print *, x
+contains
+
+function get_size(x) result(r)
+    integer, intent(in) :: x(:)
+    integer :: r
+    r = size(x)
+    return
+end function
 
 end program
