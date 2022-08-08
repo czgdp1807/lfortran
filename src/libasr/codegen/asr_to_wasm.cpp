@@ -14,7 +14,7 @@
 #include <libasr/exception.h>
 #include <libasr/asr_utils.h>
 
-// #define SHOW_ASR
+#define SHOW_ASR
 
 #ifdef SHOW_ASR
     #include <lfortran/pickle.h>
