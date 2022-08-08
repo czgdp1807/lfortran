@@ -254,11 +254,80 @@ class ReplaceSubroutineCallsVisitor : public PassUtils::PassVisitor<ReplaceSubro
         }
 };
 
+class ReplaceFunctionCalls: public ASR::BaseExprReplacer<ReplaceFunctionCalls> {
+
+    private:
+
+    Allocator& al;
+    PassArrayByDataSubroutineVisitor& v;
+
+    public:
+
+    ReplaceFunctionCalls(Allocator& al_, PassArrayByDataSubroutineVisitor& v_) : al(al_), v(v_)
+    {}
+
+    void replace_FunctionCall(ASR::FunctionCall_t* x) {
+        ASR::symbol_t* subrout_sym = x->m_name;
+        if( v.proc2newproc.find(subrout_sym) == v.proc2newproc.end() ) {
+            return ;
+        }
+
+        ASR::symbol_t* new_func_sym = v.proc2newproc[subrout_sym].first;
+        std::vector<size_t>& indices = v.proc2newproc[subrout_sym].second;
+
+        Vec<ASR::call_arg_t> new_args;
+        new_args.reserve(al, x->n_args);
+        for( size_t i = 0; i < x->n_args; i++ ) {
+            new_args.push_back(al, x->m_args[i]);
+            if( std::find(indices.begin(), indices.end(), i) == indices.end() ) {
+                continue ;
+            }
+
+            Vec<ASR::expr_t*> dim_vars;
+            dim_vars.reserve(al, 2);
+            ASRUtils::get_dimensions(x->m_args[i].m_value, dim_vars, al);
+            for( size_t j = 0; j < dim_vars.size(); j++ ) {
+                ASR::call_arg_t dim_var;
+                dim_var.loc = dim_vars[j]->base.loc;
+                dim_var.m_value = dim_vars[j];
+                new_args.push_back(al, dim_var);
+            }
+        }
+
+        ASR::expr_t* new_call = ASRUtils::EXPR(ASR::make_FunctionCall_t(al,
+                                    x->base.base.loc, new_func_sym, new_func_sym,
+                                    new_args.p, new_args.size(), x->m_type, nullptr,
+                                    x->m_dt));
+        *current_expr = new_call;
+    }
+
+};
+
+class ReplaceFunctionCallsVisitor : public ASR::CallReplacerOnExpressionsVisitor<ReplaceFunctionCallsVisitor>
+{
+    private:
+
+        ReplaceFunctionCalls replacer;
+
+    public:
+
+        ReplaceFunctionCallsVisitor(Allocator& al_,
+            PassArrayByDataSubroutineVisitor& v_) : replacer(al_, v_) {}
+
+        void call_replacer() {
+            replacer.current_expr = current_expr;
+            replacer.replace_expr(*current_expr);
+        }
+
+};
+
 void pass_array_by_data(Allocator &al, ASR::TranslationUnit_t &unit) {
     PassArrayByDataSubroutineVisitor v(al);
     v.visit_TranslationUnit(unit);
     ReplaceSubroutineCallsVisitor u(al, v);
     u.visit_TranslationUnit(unit);
+    ReplaceFunctionCallsVisitor w(al, v);
+    w.visit_TranslationUnit(unit);
     LFORTRAN_ASSERT(asr_verify(unit));
 }
 
