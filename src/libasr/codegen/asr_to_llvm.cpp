@@ -4016,6 +4016,7 @@ public:
     }
 
     inline void fetch_val(ASR::Variable_t* x) {
+        std::cout<<"fetching: "<<x->m_name<<std::endl;
         uint32_t x_h = get_hash((ASR::asr_t*)x);
         llvm::Value* x_v;
         // Check if x is a needed global here, if so, it should exist as an
@@ -4042,8 +4043,10 @@ public:
             }
         }
         if( arr_descr->is_array(x_v) ) {
+            std::cout<<x->m_name<<" is_array: "<<std::endl;
             tmp = x_v;
         } else {
+            std::cout<<x->m_name<<" not.is_array: "<<std::endl;
             tmp = x_v;
             // Load only once since its a value
             if( ptr_loads > 0 ) {
@@ -4053,7 +4056,7 @@ public:
     }
 
     inline void fetch_var(ASR::Variable_t* x) {
-        if (x->m_value) {
+        if (x->m_value && x->m_storage == ASR::storage_typeType::Parameter) {
             this->visit_expr_wrapper(x->m_value, true);
             return;
         }
@@ -4111,6 +4114,7 @@ public:
     void visit_Var(const ASR::Var_t &x) {
         ASR::Variable_t *v = ASR::down_cast<ASR::Variable_t>(
                 symbol_get_past_external(x.m_v));
+        std::cout<<"visit_Var.v: "<<v->m_name<<std::endl;
         fetch_var(v);
     }
 
