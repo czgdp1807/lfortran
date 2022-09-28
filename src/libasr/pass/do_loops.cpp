@@ -39,7 +39,7 @@ public:
     DoLoopVisitor(Allocator &al) : StatementWalkVisitor(al) {
     }
 
-    void visit_DoLoop(const ASR::DoLoop_t &x) {
+    void visit_DoLoop(ASR::DoLoop_t &x) {
         pass_result = PassUtils::replace_doloop(al, x);
     }
 };
