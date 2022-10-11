@@ -1557,6 +1557,9 @@ public:
             this->visit_expr_wrapper(x.m_value, true);
             return;
         }
+        ASR::ttype_t* array_type = ASRUtils::expr_type(x.m_v);
+        ASR::dimension_t* m_dims_temp = nullptr;
+        LFORTRAN_ASSERT(ASRUtils::extract_dimensions_from_ttype(array_type, m_dims_temp) > 0);
         bool is_argument = false;
         llvm::Value* array = nullptr;
         if( ASR::is_a<ASR::Var_t>(*x.m_v) ) {
@@ -1637,6 +1640,7 @@ public:
                     llvm_diminfo.push_back(al, dim_size);
                 }
             }
+
             tmp = arr_descr->get_single_element(array, indices, x.n_args,
                                                 is_data_only, llvm_diminfo.p);
         }
