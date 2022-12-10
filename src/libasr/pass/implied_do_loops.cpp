@@ -157,7 +157,7 @@ public:
         The function `visit_ImpliedDoLoop` transforms the ASR tree in-place.
 
         Converts:
-            
+
             (i*2, i = 1, 6)
 
         to:
@@ -224,11 +224,12 @@ public:
         doloop_body.push_back(al, pass_result[pass_result.size()-1]);
         // remove the last element of pass_result
         pass_result.resize(al, pass_result.size()-1);
-        
+
         ASR::asr_t* func = ASR::make_Function_t(
             al, x.base.base.loc,
             /* a_symtab */ current_scope,
             /* a_name */ s2c(al, func_name),
+            nullptr, 0,
             /* a_args */ args.p,
             /* n_args */ args.size(),
             /* a_body */ doloop_body.p,
@@ -237,7 +238,7 @@ public:
             ASR::abiType::Source, ASR::accessType::Public, ASR::deftypeType::Interface,
             nullptr, false, false, false, false, false, /* a_type_parameters */ nullptr,
             /* n_type_parameters */ 0, nullptr, 0, false);
-        
+
         parent_scope->add_symbol(func_name, ASR::down_cast<ASR::symbol_t>(func));
         current_scope = parent_scope;
 
@@ -273,7 +274,7 @@ public:
         // create an assignment
         ASR::expr_t* func_call_expr = ASRUtils::EXPR(func_call);
 
-        
+
         // push the assignment to pass_result
         ASR::stmt_t* assign_stmt = LFortran::ASRUtils::STMT(ASR::make_Assignment_t(al,
                                             x.base.base.loc, arr_var_expr, func_call_expr, nullptr));
