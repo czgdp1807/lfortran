@@ -2152,6 +2152,7 @@ public:
             }
         }
         current_function_dependencies.insert(std::string(ASRUtils::symbol_name(final_sym)));
+        ASRUtils::insert_module_dependency(v, al, current_module_dependencies);
         return ASR::make_FunctionCall_t(al, loc,
             final_sym, v, args.p, args.size(), return_type,
             value, nullptr);
@@ -2205,6 +2206,7 @@ public:
             type = ASRUtils::EXPR2VAR(func->m_return_var)->m_type;
         }
         current_function_dependencies.insert(std::string(ASRUtils::symbol_name(v)));
+        ASRUtils::insert_module_dependency(v, al, current_module_dependencies);
         return ASR::make_FunctionCall_t(al, loc,
                 v, nullptr, args.p, args.size(), type, nullptr,
                 v_expr);
@@ -2240,6 +2242,7 @@ public:
                 type = handle_return_type(type, loc, args, func);
             }
             current_function_dependencies.insert(std::string(ASRUtils::symbol_name(final_sym)));
+            ASRUtils::insert_module_dependency(v, al, current_module_dependencies);
             return ASR::make_FunctionCall_t(al, loc,
                 final_sym, v, args.p, args.size(), type,
                 nullptr, nullptr);
@@ -2284,10 +2287,12 @@ public:
             }
             current_function_dependencies.insert(std::string(ASRUtils::symbol_name(final_sym)));
             if (cp_s != nullptr) {
+                ASRUtils::insert_module_dependency(cp_s, al, current_module_dependencies);
                 return ASR::make_FunctionCall_t(al, loc,
                     cp_s, v, args.p, args.size(), type,
                     nullptr, nullptr);
             } else {
+                ASRUtils::insert_module_dependency(v, al, current_module_dependencies);
                 return ASR::make_FunctionCall_t(al, loc,
                     final_sym, v, args.p, args.size(), type,
                     nullptr, nullptr);
@@ -2331,6 +2336,7 @@ public:
                 current_module_dependencies.push_back(al, v_module->m_name);
             }
         }
+        ASRUtils::insert_module_dependency(v, al, current_module_dependencies);
         return ASR::make_FunctionCall_t(al, loc, v, nullptr,
             args.p, args.size(), return_type, value, nullptr);
     }
@@ -2340,6 +2346,7 @@ public:
         ASR::FunctionType_t* func = ASR::down_cast<ASR::FunctionType_t>(ASRUtils::symbol_type(v));
         ASR::ttype_t *return_type = func->m_return_var_type;
         current_function_dependencies.insert(std::string(ASRUtils::symbol_name(v)));
+        ASRUtils::insert_module_dependency(v, al, current_module_dependencies);
         return ASR::make_FunctionCall_t(al, loc, v, nullptr,
             args.p, args.size(), return_type, nullptr, nullptr);
     }
@@ -3091,6 +3098,7 @@ public:
         }
 
         current_function_dependencies.insert(function_name);
+        ASRUtils::insert_module_dependency(function, al, current_module_dependencies);
         return ASR::make_FunctionCall_t(al, x.base.base.loc, function, nullptr, func_args.p,
             func_args.size(), type, nullptr, nullptr);
     }
@@ -3964,10 +3972,7 @@ public:
                             return_type = ASRUtils::expr_type(func->m_return_var);
                         }
                         current_function_dependencies.insert(matched_func_name);
-                        if( ASR::is_a<ASR::ExternalSymbol_t>(*a_name) ) {
-                            current_module_dependencies.push_back(al,
-                                ASR::down_cast<ASR::ExternalSymbol_t>(a_name)->m_module_name);
-                        }
+                        ASRUtils::insert_module_dependency(a_name, al, current_module_dependencies);
                         tmp = ASR::make_FunctionCall_t(al, x.base.base.loc,
                             a_name, sym, a_args.p, 2, return_type,
                             nullptr, nullptr);
