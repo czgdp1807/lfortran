@@ -207,8 +207,8 @@ void pass_replace_arr_slice(Allocator &al, ASR::TranslationUnit_t &unit,
                             const LCompilers::PassOptions& /*pass_options*/) {
     ArraySectionVisitor v(al);
     v.visit_TranslationUnit(unit);
-    PassUtils::UpdateDependenciesVisitor w(al);
-    w.visit_TranslationUnit(unit);
+    PassUtils::UpdateDependenciesVisitor u(al);
+    u.visit_TranslationUnit(unit);
 }
 
 } // namespace LCompilers
