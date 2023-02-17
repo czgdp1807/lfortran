@@ -51,7 +51,8 @@ namespace LCompilers {
             Allocator& al, SymbolTable*& current_scope, ASR::stmt_t*& assign_stmt);
 
         ASR::expr_t* create_auxiliary_variable(Location& loc, std::string& name,
-            Allocator& al, SymbolTable*& current_scope, ASR::ttype_t* var_type);
+            Allocator& al, SymbolTable*& current_scope, ASR::ttype_t* var_type,
+            ASR::intentType var_intent=ASR::intentType::Local);
 
         ASR::expr_t* get_fma(ASR::expr_t* arg0, ASR::expr_t* arg1, ASR::expr_t* arg2,
                              Allocator& al, ASR::TranslationUnit_t& unit, LCompilers::PassOptions& pass_options,
@@ -265,10 +266,16 @@ namespace LCompilers {
                 : al(al_), fill_function_dependencies(false),
                 fill_module_dependencies(false),
                 fill_variable_dependencies(false)
-                {}
+                {
+                    function_dependencies.n = 0;
+                    module_dependencies.n = 0;
+                    variable_dependencies.n = 0;
+                }
 
                 void visit_Function(const ASR::Function_t& x) {
                     ASR::Function_t& xx = const_cast<ASR::Function_t&>(x);
+                    Vec<char*> function_dependencies_copy;
+                    function_dependencies_copy.from_pointer_n_copy(al, function_dependencies.p, function_dependencies.size());
                     function_dependencies.n = 0;
                     function_dependencies.reserve(al, 1);
                     bool fill_function_dependencies_copy = fill_function_dependencies;
@@ -277,6 +284,10 @@ namespace LCompilers {
                     xx.m_dependencies = function_dependencies.p;
                     xx.n_dependencies = function_dependencies.size();
                     fill_function_dependencies = fill_function_dependencies_copy;
+                    function_dependencies.from_pointer_n_copy(al,
+                        function_dependencies_copy.p,
+                        function_dependencies_copy.size()
+                    );
                 }
 
                 void visit_Module(const ASR::Module_t& x) {
@@ -340,6 +351,13 @@ namespace LCompilers {
                         }
                     }
                     BaseWalkVisitor<UpdateDependenciesVisitor>::visit_SubroutineCall(x);
+                }
+
+                void visit_BlockCall(const ASR::BlockCall_t& x) {
+                    ASR::Block_t* block = ASR::down_cast<ASR::Block_t>(x.m_m);
+                    for (size_t i=0; i<block->n_body; i++) {
+                        visit_stmt(*(block->m_body[i]));
+                    }
                 }
         };
 
