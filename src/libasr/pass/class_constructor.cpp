@@ -28,6 +28,61 @@ public:
         pass_result.reserve(al, 0);
     }
 
+    std::vector<std::string> determine_struct_variables_init_order(
+         SymbolTable* symtab) {
+        std::map<std::string, std::vector<std::string>> dep_graph;
+        for( auto itr: symtab->get_scope() ) {
+            if( ASR::is_a<ASR::Variable_t>(*itr.second) &&
+                ASR::is_a<ASR::Struct_t>(*ASRUtils::symbol_type(itr.second)) ) {
+                std::vector<std::string> deps;
+                ASR::Variable_t* var = ASR::down_cast<ASR::Variable_t>(itr.second);
+                for( size_t i = 0; i < var->n_dependencies; i++ ) {
+                    std::string dep = var->m_dependencies[i];
+                    ASR::symbol_t* sym = symtab->get_symbol(dep);
+                    if( sym && ASR::is_a<ASR::Variable_t>(*sym) &&
+                        ASR::is_a<ASR::Struct_t>(*ASRUtils::symbol_type(sym)) ) {
+                        deps.push_back(dep);
+                    }
+                }
+                dep_graph[itr.first] = deps;
+            }
+        }
+        return ASRUtils::order_deps(dep_graph);
+    }
+
+    void visit_Program(const ASR::Program_t& x) {
+        ASR::Program_t& xx = const_cast<ASR::Program_t&>(x);
+        std::vector<std::string> struct_variables = determine_struct_variables_init_order(xx.m_symtab);
+        Vec<ASR::stmt_t*> init_statements;
+        init_statements.reserve(al, 1);
+        for( std::string& struct_variable: struct_variables ) {
+            ASR::symbol_t* sym = xx.m_symtab->get_symbol(struct_variable);
+            ASR::Variable_t* variable = ASR::down_cast<ASR::Variable_t>(sym);
+            std::cout<<"struct_variable: "<<struct_variable<<std::endl;
+            if( variable->m_symbolic_value ) {
+                ASR::expr_t* target_var = ASRUtils::EXPR(ASR::make_Var_t(al, variable->base.base.loc, sym));
+                init_statements.push_back(al, ASRUtils::STMT(ASR::make_Assignment_t(al, variable->base.base.loc,
+                                                target_var, variable->m_symbolic_value, nullptr)));
+            }
+        }
+
+        std::cout<<"init_statements: "<<init_statements.size()<<std::endl;
+        if( init_statements.size() > 0 ) {
+            Vec<ASR::stmt_t*> init_prefixed_body;
+            init_prefixed_body.reserve(al, init_statements.size() + x.n_body);
+            for( size_t i = 0; i < init_statements.size(); i++ ) {
+                init_prefixed_body.push_back(al, init_statements.p[i]);
+            }
+            for( size_t i = 0; i < x.n_body; i++ ) {
+                init_prefixed_body.push_back(al, x.m_body[i]);
+            }
+            xx.m_body = init_prefixed_body.p;
+            xx.n_body = init_prefixed_body.size();
+        }
+
+        PassUtils::PassVisitor<ClassConstructorVisitor>::visit_Program(x);
+    }
+
     void visit_Assignment(const ASR::Assignment_t& x) {
         ASR::Assignment_t& xx = const_cast<ASR::Assignment_t&>(x);
         if( x.m_value->type == ASR::exprType::StructTypeConstructor ) {
