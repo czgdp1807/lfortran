@@ -187,15 +187,10 @@ class ReplaceIntrinsicFunction: public ASR::BaseExprReplacer<ReplaceIntrinsicFun
                     arg0.m_value = arg;
                     new_args.push_back(al, arg0);
                 }
-                ASR::expr_t *value = nullptr;
-                ASR::expr_t *arg_value = ASRUtils::expr_value(arg);
-                if (arg_value) {
-                    value = eval_sin(al, x->base.base.loc, arg_value);
-                }
 
                 ASR::expr_t* new_call = ASRUtils::EXPR(ASR::make_FunctionCall_t(al,
                     x->base.base.loc, new_func_sym, new_func_sym,
-                    new_args.p, new_args.size(), arg_type, value, nullptr));
+                    new_args.p, new_args.size(), arg_type, x->m_value, nullptr));
 
                 *current_expr = new_call;
                 break;
@@ -218,15 +213,10 @@ class ReplaceIntrinsicFunction: public ASR::BaseExprReplacer<ReplaceIntrinsicFun
                     arg0.m_value = arg;
                     new_args.push_back(al, arg0);
                 }
-                ASR::expr_t *value = nullptr;
-                ASR::expr_t *arg_value = ASRUtils::expr_value(arg);
-                if (arg_value) {
-                    value = eval_log_gamma(al, x->base.base.loc, arg_value);
-                }
 
                 ASR::expr_t* new_call = ASRUtils::EXPR(ASR::make_FunctionCall_t(
                     al, x->base.base.loc, new_func_sym, new_func_sym,
-                    new_args.p, new_args.size(), arg_type, value, nullptr));
+                    new_args.p, new_args.size(), arg_type, x->m_value, nullptr));
 
                 *current_expr = new_call;
                 break;
