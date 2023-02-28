@@ -25,18 +25,23 @@ in the backend.
 
 */
 
+ASR::expr_t *eval_sin(Allocator &al, const Location &loc, ASR::expr_t* arg) {
+    double rv = ASR::down_cast<ASR::RealConstant_t>(arg)->m_r;
+    double val = sin(rv);
+    ASR::ttype_t *t = ASRUtils::expr_type(arg);
+    return ASRUtils::EXPR(ASR::make_RealConstant_t(al, loc, val, t));
+}
+
 ASR::expr_t *eval_log_gamma(Allocator &al, const Location &loc, ASR::expr_t* arg) {
     double rv = ASR::down_cast<ASR::RealConstant_t>(arg)->m_r;
     double val = lgamma(rv);
     ASR::ttype_t *t = ASRUtils::expr_type(arg);
-    return ASR::down_cast<ASR::expr_t>(ASR::make_RealConstant_t(al, loc, val, t));
+    return ASRUtils::EXPR(ASR::make_RealConstant_t(al, loc, val, t));
 }
 
-ASR::symbol_t* instantiate_LogGamma(Allocator &al, Location &loc,
+ASR::symbol_t* instantiate_functions(Allocator &al, Location &loc,
         SymbolTable *global_scope, std::string &new_name,
-        ASR::ttype_t *arg_type) {
-    SymbolTable *fn_symtab = al.make_new<SymbolTable>(global_scope);
-
+        std::string c_func_name, ASR::ttype_t *arg_type) {
     // Check if Function is already defined.
     {
         std::string new_func_name = new_name;
@@ -54,6 +59,7 @@ ASR::symbol_t* instantiate_LogGamma(Allocator &al, Location &loc,
         }
     }
     new_name = global_scope->get_unique_name(new_name);
+    SymbolTable *fn_symtab = al.make_new<SymbolTable>(global_scope);
 
     Vec<ASR::expr_t*> args;
     {
@@ -80,12 +86,6 @@ ASR::symbol_t* instantiate_LogGamma(Allocator &al, Location &loc,
 
     {
         SymbolTable *fn_symtab_1 = al.make_new<SymbolTable>(fn_symtab);
-        std::string c_func_name;
-        if (ASRUtils::extract_kind_from_ttype_t(arg_type) == 4) {
-            c_func_name = "_lfortran_slog_gamma";
-        } else {
-            c_func_name = "_lfortran_dlog_gamma";
-        }
         Vec<ASR::expr_t*> args_1;
         {
             args_1.reserve(al, 1);
@@ -151,38 +151,81 @@ class ReplaceIntrinsicFunction: public ASR::BaseExprReplacer<ReplaceIntrinsicFun
 
 
     void replace_IntrinsicFunction(ASR::IntrinsicFunction_t* x) {
+        LCOMPILERS_ASSERT(x->n_args == 1)
+        ASR::expr_t *arg = nullptr;
+        // Replace any IntrinsicFunctions in the argument first:
+        {
+            ASR::expr_t** current_expr_copy_ = current_expr;
+            current_expr = &(x->m_args[0]);
+            replace_expr(x->m_args[0]);
+            arg = *current_expr; // Use the converted arg
+            current_expr = current_expr_copy_;
+        }
+        // TODO: currently we always instantiate a new function.
+        // Rather we should reuse the old instantiation if it has
+        // exactly the same arguments. For that we could use the
+        // overload_id, and uniquely encode the argument types.
+        // We could maintain a mapping of type -> id and look it up.
         switch (x->m_intrinsic_id) {
-            case (static_cast<int64_t>(ASRUtils::IntrinsicFunctions::LogGamma)) : {
-                LCOMPILERS_ASSERT(x->n_args == 1)
-                // Replace any IntrinsicFunctions in the argument first:
-                ASR::expr_t** current_expr_copy_ = current_expr;
-                current_expr = &(x->m_args[0]);
-                replace_expr(x->m_args[0]);
-                ASR::expr_t *arg = *current_expr; // Use the converted arg
-                current_expr = current_expr_copy_;
-                // TODO: currently we always instantiate a new function.
-                // Rather we should reuse the old instantiation if it has
-                // exactly the same arguments. For that we could use the
-                // overload_id, and uniquely encode the argument types.
-                // We could maintain a mapping of type -> id and look it up.
-                std::string new_name = "_lcompilers_LogGamma";
-                ASR::symbol_t* new_func_sym = instantiate_LogGamma(al, x->base.base.loc,
-                    global_scope, new_name, ASRUtils::expr_type(x->m_args[0]));
+            case (static_cast<int64_t>(ASRUtils::IntrinsicFunctions::Sin)) : {
+                // TODO: Handle complex type
+                std::string new_name = "_lcompilers_Sin";
+                std::string c_func_name;
+                ASR::ttype_t *arg_type = ASRUtils::expr_type(x->m_args[0]);
+                if (ASRUtils::extract_kind_from_ttype_t(arg_type) == 4) {
+                    c_func_name = "_lfortran_ssin";
+                } else {
+                    c_func_name = "_lfortran_dsin";
+                }
+                ASR::symbol_t* new_func_sym = instantiate_functions(al, x->base.base.loc,
+                    global_scope, new_name, c_func_name, arg_type);
                 Vec<ASR::call_arg_t> new_args;
-                new_args.reserve(al, x->n_args);
-                ASR::call_arg_t arg0;
-                arg0.m_value = arg;
-                new_args.push_back(al, arg0);
+                {
+                    new_args.reserve(al, x->n_args);
+                    ASR::call_arg_t arg0;
+                    arg0.m_value = arg;
+                    new_args.push_back(al, arg0);
+                }
+                ASR::expr_t *value = nullptr;
+                ASR::expr_t *arg_value = ASRUtils::expr_value(arg);
+                if (arg_value) {
+                    value = eval_sin(al, x->base.base.loc, arg_value);
+                }
+
+                ASR::expr_t* new_call = ASRUtils::EXPR(ASR::make_FunctionCall_t(al,
+                    x->base.base.loc, new_func_sym, new_func_sym,
+                    new_args.p, new_args.size(), arg_type, value, nullptr));
+
+                *current_expr = new_call;
+                break;
+            }
+            case (static_cast<int64_t>(ASRUtils::IntrinsicFunctions::LogGamma)) : {
+                std::string new_name = "_lcompilers_LogGamma";
+                std::string c_func_name;
+                ASR::ttype_t *arg_type = ASRUtils::expr_type(x->m_args[0]);
+                if (ASRUtils::extract_kind_from_ttype_t(arg_type) == 4) {
+                    c_func_name = "_lfortran_slog_gamma";
+                } else {
+                    c_func_name = "_lfortran_dlog_gamma";
+                }
+                ASR::symbol_t* new_func_sym = instantiate_functions(al, x->base.base.loc,
+                    global_scope, new_name, c_func_name, arg_type);
+                Vec<ASR::call_arg_t> new_args;
+                {
+                    new_args.reserve(al, x->n_args);
+                    ASR::call_arg_t arg0;
+                    arg0.m_value = arg;
+                    new_args.push_back(al, arg0);
+                }
                 ASR::expr_t *value = nullptr;
                 ASR::expr_t *arg_value = ASRUtils::expr_value(arg);
                 if (arg_value) {
                     value = eval_log_gamma(al, x->base.base.loc, arg_value);
                 }
 
-                ASR::expr_t* new_call = ASRUtils::EXPR(ASR::make_FunctionCall_t(al,
-                    x->base.base.loc, new_func_sym, new_func_sym,
-                    new_args.p, new_args.size(), ASRUtils::expr_type(x->m_args[0]),
-                    value, nullptr));
+                ASR::expr_t* new_call = ASRUtils::EXPR(ASR::make_FunctionCall_t(
+                    al, x->base.base.loc, new_func_sym, new_func_sym,
+                    new_args.p, new_args.size(), arg_type, value, nullptr));
 
                 *current_expr = new_call;
                 break;

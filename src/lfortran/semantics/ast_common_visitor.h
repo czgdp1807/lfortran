@@ -3108,10 +3108,19 @@ public:
     ASR::asr_t* create_sin(const AST::FuncCallOrArray_t& x) {
         Vec<ASR::expr_t*> args = visit_expr_list(x.m_args, x.n_args);
         ASR::ttype_t *type = ASRUtils::expr_type(args[0]);
+        if (!ASRUtils::is_real(*type) && !ASRUtils::is_complex(*type)) {
+            throw SemanticError("`x` argument of `sin` must be real or complex",
+                args[0]->base.loc);
+        }
+        ASR::expr_t *value = nullptr;
+        ASR::expr_t *arg_value = ASRUtils::expr_value(args[0]);
+        if (arg_value) {
+            value = eval_sin(al, x.base.base.loc, arg_value);
+        }
         int64_t intrinsic_id = static_cast<int64_t>(ASRUtils::IntrinsicFunctions::Sin);
         int64_t overload_id = 0;
         return ASR::make_IntrinsicFunction_t(al, x.base.base.loc,
-            intrinsic_id, args.p, args.n, overload_id, type, nullptr);
+            intrinsic_id, args.p, args.n, overload_id, type, value);
     }
 
     ASR::asr_t* create_cos(const AST::FuncCallOrArray_t& x) {
@@ -3291,8 +3300,6 @@ public:
                 tmp = create_ArrayReshape(x);
             } else if( var_name == "ichar" ) {
                 tmp = create_Ichar(x);
-            } else if( var_name == "log_gamma" ) {
-                tmp = create_LogGamma(x);
             } else if( var_name == "iachar" ) {
                 tmp = create_Iachar(x);
             } else if( var_name == "maxloc" ) {
@@ -3309,6 +3316,10 @@ public:
                 tmp = create_IntrinsicFunctionSqrt(x);
             } else if( var_name == "all" ) {
                 tmp = create_ArrayAll(x);
+            } else if( var_name == "sin" ) {
+                tmp = create_sin(x);
+            } else if( var_name == "log_gamma" ) {
+                tmp = create_LogGamma(x);
             } else {
                 throw LCompilersException("create_" + var_name + " not implemented yet.");
             }
