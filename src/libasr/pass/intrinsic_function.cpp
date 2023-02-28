@@ -168,10 +168,11 @@ class ReplaceIntrinsicFunction: public ASR::BaseExprReplacer<ReplaceIntrinsicFun
         // We could maintain a mapping of type -> id and look it up.
         switch (x->m_intrinsic_id) {
             case (static_cast<int64_t>(ASRUtils::IntrinsicFunctions::Sin)) : {
-                // TODO: Handle complex type
                 std::string new_name = "_lcompilers_Sin";
                 std::string c_func_name;
                 ASR::ttype_t *arg_type = ASRUtils::expr_type(x->m_args[0]);
+                // TODO: Handle complex type
+                LCOMPILERS_ASSERT(ASR::is_a<ASR::Real_t>(*arg_type))
                 if (ASRUtils::extract_kind_from_ttype_t(arg_type) == 4) {
                     c_func_name = "_lfortran_ssin";
                 } else {
