@@ -33,9 +33,27 @@ ASR::expr_t *eval_log_gamma(Allocator &al, const Location &loc, ASR::expr_t* arg
 }
 
 ASR::symbol_t* instantiate_LogGamma(Allocator &al, Location &loc,
-        SymbolTable *global_scope, const std::string &new_name,
+        SymbolTable *global_scope, std::string &new_name,
         ASR::ttype_t *arg_type) {
     SymbolTable *fn_symtab = al.make_new<SymbolTable>(global_scope);
+
+    // Check if Function is already defined.
+    {
+        std::string new_func_name = new_name;
+        int i = 1;
+        while (global_scope->get_symbol(new_func_name) != nullptr) {
+            ASR::symbol_t *s = global_scope->get_symbol(new_func_name);
+            ASR::Function_t *f = ASR::down_cast<ASR::Function_t>(s);
+            if (ASRUtils::types_equal(ASRUtils::expr_type(f->m_return_var),
+                    arg_type)) {
+                return s;
+            } else {
+                new_func_name += std::to_string(i);
+                i++;
+            }
+        }
+    }
+    new_name = global_scope->get_unique_name(new_name);
 
     Vec<ASR::expr_t*> args;
     {
@@ -147,7 +165,7 @@ class ReplaceIntrinsicFunction: public ASR::BaseExprReplacer<ReplaceIntrinsicFun
                 // exactly the same arguments. For that we could use the
                 // overload_id, and uniquely encode the argument types.
                 // We could maintain a mapping of type -> id and look it up.
-                std::string new_name = global_scope->get_unique_name("_lcompilers_LogGamma");
+                std::string new_name = "_lcompilers_LogGamma";
                 ASR::symbol_t* new_func_sym = instantiate_LogGamma(al, x->base.base.loc,
                     global_scope, new_name, ASRUtils::expr_type(x->m_args[0]));
                 Vec<ASR::call_arg_t> new_args;
