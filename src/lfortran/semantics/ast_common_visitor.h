@@ -3107,8 +3107,7 @@ public:
 
     ASR::asr_t* create_sin(const AST::FuncCallOrArray_t& x) {
         Vec<ASR::expr_t*> args = visit_expr_list(x.m_args, x.n_args);
-        ASR::ttype_t *type = ASRUtils::TYPE(ASR::make_Real_t(al, x.base.base.loc,
-                                4, nullptr, 0));
+        ASR::ttype_t *type = ASRUtils::expr_type(args[0]);
         int64_t intrinsic_id = static_cast<int64_t>(ASRUtils::IntrinsicFunctions::Sin);
         int64_t overload_id = 0;
         return ASR::make_IntrinsicFunction_t(al, x.base.base.loc,
@@ -3117,8 +3116,7 @@ public:
 
     ASR::asr_t* create_cos(const AST::FuncCallOrArray_t& x) {
         Vec<ASR::expr_t*> args = visit_expr_list(x.m_args, x.n_args);
-        ASR::ttype_t *type = ASRUtils::TYPE(ASR::make_Real_t(al, x.base.base.loc,
-                                4, nullptr, 0));
+        ASR::ttype_t *type = ASRUtils::expr_type(args[0]);
         int64_t intrinsic_id = static_cast<int64_t>(ASRUtils::IntrinsicFunctions::Cos);
         int64_t overload_id = 0;
         return ASR::make_IntrinsicFunction_t(al, x.base.base.loc,
