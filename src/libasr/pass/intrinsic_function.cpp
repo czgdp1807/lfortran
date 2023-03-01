@@ -39,9 +39,17 @@ ASR::expr_t *eval_log_gamma(Allocator &al, const Location &loc, ASR::expr_t* arg
     return ASRUtils::EXPR(ASR::make_RealConstant_t(al, loc, val, t));
 }
 
-ASR::symbol_t* instantiate_functions(Allocator &al, Location &loc,
-        SymbolTable *global_scope, std::string &new_name,
-        std::string c_func_name, ASR::ttype_t *arg_type) {
+ASR::expr_t* instantiate_functions(Allocator &al, Location &loc,
+        SymbolTable *global_scope, std::string new_name,
+        ASR::ttype_t *arg_type, Vec<ASR::call_arg_t> &new_args,
+        ASR::expr_t *value) {
+    std::string c_func_name;
+    if (ASRUtils::extract_kind_from_ttype_t(arg_type) == 4) {
+        c_func_name = "_lfortran_s" + new_name;
+    } else {
+        c_func_name = "_lfortran_d" + new_name;
+    }
+    new_name = "_lcompilers_" + new_name;
     // Check if Function is already defined.
     {
         std::string new_func_name = new_name;
@@ -51,7 +59,8 @@ ASR::symbol_t* instantiate_functions(Allocator &al, Location &loc,
             ASR::Function_t *f = ASR::down_cast<ASR::Function_t>(s);
             if (ASRUtils::types_equal(ASRUtils::expr_type(f->m_return_var),
                     arg_type)) {
-                return s;
+                return ASRUtils::EXPR(ASR::make_FunctionCall_t(al, loc, s,
+                    s, new_args.p, new_args.size(), arg_type, value, nullptr));
             } else {
                 new_func_name += std::to_string(i);
                 i++;
@@ -133,7 +142,8 @@ ASR::symbol_t* instantiate_functions(Allocator &al, Location &loc,
         false, false, nullptr, 0, nullptr, 0, false, false, false);
     ASR::symbol_t *new_symbol = ASR::down_cast<ASR::symbol_t>(new_subrout);
     global_scope->add_symbol(new_name, new_symbol);
-    return new_symbol;
+    return ASRUtils::EXPR(ASR::make_FunctionCall_t(al, loc, new_symbol,
+        new_symbol, new_args.p, new_args.size(), arg_type, value, nullptr));
 }
 
 
@@ -152,13 +162,16 @@ class ReplaceIntrinsicFunction: public ASR::BaseExprReplacer<ReplaceIntrinsicFun
 
     void replace_IntrinsicFunction(ASR::IntrinsicFunction_t* x) {
         LCOMPILERS_ASSERT(x->n_args == 1)
-        ASR::expr_t *arg = nullptr;
+        Vec<ASR::call_arg_t> new_args;
         // Replace any IntrinsicFunctions in the argument first:
         {
             ASR::expr_t** current_expr_copy_ = current_expr;
             current_expr = &(x->m_args[0]);
             replace_expr(x->m_args[0]);
-            arg = *current_expr; // Use the converted arg
+            new_args.reserve(al, x->n_args);
+            ASR::call_arg_t arg0;
+            arg0.m_value = *current_expr; // Use the converted arg
+            new_args.push_back(al, arg0);
             current_expr = current_expr_copy_;
         }
         // TODO: currently we always instantiate a new function.
@@ -168,57 +181,19 @@ class ReplaceIntrinsicFunction: public ASR::BaseExprReplacer<ReplaceIntrinsicFun
         // We could maintain a mapping of type -> id and look it up.
         switch (x->m_intrinsic_id) {
             case (static_cast<int64_t>(ASRUtils::IntrinsicFunctions::Sin)) : {
-                std::string new_name = "_lcompilers_Sin";
-                std::string c_func_name;
                 ASR::ttype_t *arg_type = ASRUtils::expr_type(x->m_args[0]);
                 // TODO: Handle complex type
                 LCOMPILERS_ASSERT(ASR::is_a<ASR::Real_t>(*arg_type))
-                if (ASRUtils::extract_kind_from_ttype_t(arg_type) == 4) {
-                    c_func_name = "_lfortran_ssin";
-                } else {
-                    c_func_name = "_lfortran_dsin";
-                }
-                ASR::symbol_t* new_func_sym = instantiate_functions(al, x->base.base.loc,
-                    global_scope, new_name, c_func_name, arg_type);
-                Vec<ASR::call_arg_t> new_args;
-                {
-                    new_args.reserve(al, x->n_args);
-                    ASR::call_arg_t arg0;
-                    arg0.m_value = arg;
-                    new_args.push_back(al, arg0);
-                }
-
-                ASR::expr_t* new_call = ASRUtils::EXPR(ASR::make_FunctionCall_t(al,
-                    x->base.base.loc, new_func_sym, new_func_sym,
-                    new_args.p, new_args.size(), arg_type, x->m_value, nullptr));
-
-                *current_expr = new_call;
+                *current_expr = instantiate_functions(al, x->base.base.loc,
+                    global_scope, s2c(al, "sin"), arg_type,
+                    new_args, x->m_value);
                 break;
             }
             case (static_cast<int64_t>(ASRUtils::IntrinsicFunctions::LogGamma)) : {
-                std::string new_name = "_lcompilers_LogGamma";
-                std::string c_func_name;
                 ASR::ttype_t *arg_type = ASRUtils::expr_type(x->m_args[0]);
-                if (ASRUtils::extract_kind_from_ttype_t(arg_type) == 4) {
-                    c_func_name = "_lfortran_slog_gamma";
-                } else {
-                    c_func_name = "_lfortran_dlog_gamma";
-                }
-                ASR::symbol_t* new_func_sym = instantiate_functions(al, x->base.base.loc,
-                    global_scope, new_name, c_func_name, arg_type);
-                Vec<ASR::call_arg_t> new_args;
-                {
-                    new_args.reserve(al, x->n_args);
-                    ASR::call_arg_t arg0;
-                    arg0.m_value = arg;
-                    new_args.push_back(al, arg0);
-                }
-
-                ASR::expr_t* new_call = ASRUtils::EXPR(ASR::make_FunctionCall_t(
-                    al, x->base.base.loc, new_func_sym, new_func_sym,
-                    new_args.p, new_args.size(), arg_type, x->m_value, nullptr));
-
-                *current_expr = new_call;
+                *current_expr = instantiate_functions(al, x->base.base.loc,
+                    global_scope, s2c(al, "log_gamma"), arg_type,
+                    new_args, x->m_value);
                 break;
             }
             default : {
