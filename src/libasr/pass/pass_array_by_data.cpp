@@ -89,8 +89,9 @@ class PassArrayByDataProcedureVisitor : public PassUtils::PassVisitor<PassArrayB
             ASR::FunctionCall_t& xx = const_cast<ASR::FunctionCall_t&>(x);
             ASR::symbol_t* x_sym = xx.m_name;
             std::string x_sym_name = std::string(ASRUtils::symbol_name(x_sym));
-            if( current_proc_scope->get_symbol(x_sym_name) != x_sym ) {
-                xx.m_name = current_proc_scope->get_symbol(x_sym_name);
+            if( current_proc_scope->resolve_symbol(x_sym_name) != x_sym ) {
+                xx.m_name = current_proc_scope->resolve_symbol(x_sym_name);
+                LCOMPILERS_ASSERT(xx.m_name != nullptr);
             }
         }
 
@@ -295,6 +296,7 @@ class ReplaceSubroutineCallsVisitor : public PassUtils::PassVisitor<ReplaceSubro
                 }
             }
 
+            LCOMPILERS_ASSERT(new_subrout_sym != nullptr);
             ASR::stmt_t* new_call = ASRUtils::STMT(ASR::make_SubroutineCall_t(al,
                                         x.base.base.loc, new_subrout_sym, new_subrout_sym,
                                         new_args.p, new_args.size(), x.m_dt));
@@ -357,6 +359,7 @@ class ReplaceFunctionCalls: public ASR::BaseExprReplacer<ReplaceFunctionCalls> {
         }
 
         LCOMPILERS_ASSERT(new_args.size() == ASR::down_cast<ASR::Function_t>(new_func_sym)->n_args);
+        LCOMPILERS_ASSERT(new_func_sym != nullptr);
         ASR::expr_t* new_call = ASRUtils::EXPR(ASR::make_FunctionCall_t(al,
                                     x->base.base.loc, new_func_sym, new_func_sym,
                                     new_args.p, new_args.size(), x->m_type, nullptr,
