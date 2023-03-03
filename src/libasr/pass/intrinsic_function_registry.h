@@ -156,14 +156,12 @@ static inline ASR::asr_t* create_LogGamma(Allocator& al, const Location& loc,
 }
 
 static inline ASR::expr_t* instantiate_LogGamma(Allocator &al, const Location &loc,
-    SymbolTable *scope, const std::string &new_name,
-    Vec<ASR::ttype_t*>& arg_types,
-    Vec<ASR::call_arg_t>& new_args,
-    ASR::expr_t* compile_time_value) {
+    SymbolTable *scope, Vec<ASR::ttype_t*>& arg_types,
+    Vec<ASR::call_arg_t>& new_args, ASR::expr_t* compile_time_value) {
     LCOMPILERS_ASSERT(arg_types.size() == 1);
     ASR::ttype_t* arg_type = arg_types[0];
     return UnaryIntrinsicFunction::instantiate_functions(
-        al, loc, scope, new_name, arg_type, new_args,
+        al, loc, scope, "log_gamma", arg_type, new_args,
         compile_time_value);
 }
 
@@ -202,14 +200,12 @@ static inline ASR::asr_t* create_Sin(Allocator& al, const Location& loc,
 }
 
 static inline ASR::expr_t* instantiate_Sin(Allocator &al, const Location &loc,
-    SymbolTable *scope, const std::string &new_name,
-    Vec<ASR::ttype_t*>& arg_types,
-    Vec<ASR::call_arg_t>& new_args,
-    ASR::expr_t* compile_time_value) {
+    SymbolTable *scope, Vec<ASR::ttype_t*>& arg_types,
+    Vec<ASR::call_arg_t>& new_args, ASR::expr_t* compile_time_value) {
     LCOMPILERS_ASSERT(arg_types.size() == 1);
     ASR::ttype_t* arg_type = arg_types[0];
     return UnaryIntrinsicFunction::instantiate_functions(
-        al, loc, scope, new_name, arg_type, new_args,
+        al, loc, scope, "sin", arg_type, new_args,
         compile_time_value);
 }
 
@@ -217,9 +213,8 @@ static inline ASR::expr_t* instantiate_Sin(Allocator &al, const Location &loc,
 
 typedef ASR::expr_t* (*impl_function)(
     Allocator&, const Location &,
-    SymbolTable*, const std::string &,
-    Vec<ASR::ttype_t*>&, Vec<ASR::call_arg_t>&,
-    ASR::expr_t*);
+    SymbolTable*, Vec<ASR::ttype_t*>&,
+    Vec<ASR::call_arg_t>&, ASR::expr_t*);
 
 typedef ASR::expr_t* (*eval_intrinsic_function)(
     Allocator&, const Location &,
