@@ -1,11 +1,10 @@
-#include <cmath>
-
 #include <libasr/asr.h>
 #include <libasr/containers.h>
 #include <libasr/exception.h>
 #include <libasr/asr_utils.h>
 #include <libasr/asr_verify.h>
 #include <libasr/pass/intrinsic_function.h>
+#include <libasr/pass/intrinsic_function_registry.h>
 #include <libasr/pass/pass_utils.h>
 
 #include <vector>
@@ -24,128 +23,6 @@ Call this pass if you do not want to implement intrinsic functions directly
 in the backend.
 
 */
-
-ASR::expr_t *eval_sin(Allocator &al, const Location &loc, ASR::expr_t* arg) {
-    double rv = ASR::down_cast<ASR::RealConstant_t>(arg)->m_r;
-    double val = sin(rv);
-    ASR::ttype_t *t = ASRUtils::expr_type(arg);
-    return ASRUtils::EXPR(ASR::make_RealConstant_t(al, loc, val, t));
-}
-
-ASR::expr_t *eval_log_gamma(Allocator &al, const Location &loc, ASR::expr_t* arg) {
-    double rv = ASR::down_cast<ASR::RealConstant_t>(arg)->m_r;
-    double val = lgamma(rv);
-    ASR::ttype_t *t = ASRUtils::expr_type(arg);
-    return ASRUtils::EXPR(ASR::make_RealConstant_t(al, loc, val, t));
-}
-
-ASR::expr_t* instantiate_functions(Allocator &al, Location &loc,
-        SymbolTable *global_scope, std::string new_name,
-        ASR::ttype_t *arg_type, Vec<ASR::call_arg_t> &new_args,
-        ASR::expr_t *value) {
-    std::string c_func_name;
-    if (ASRUtils::extract_kind_from_ttype_t(arg_type) == 4) {
-        c_func_name = "_lfortran_s" + new_name;
-    } else {
-        c_func_name = "_lfortran_d" + new_name;
-    }
-    new_name = "_lcompilers_" + new_name;
-    // Check if Function is already defined.
-    {
-        std::string new_func_name = new_name;
-        int i = 1;
-        while (global_scope->get_symbol(new_func_name) != nullptr) {
-            ASR::symbol_t *s = global_scope->get_symbol(new_func_name);
-            ASR::Function_t *f = ASR::down_cast<ASR::Function_t>(s);
-            if (ASRUtils::types_equal(ASRUtils::expr_type(f->m_return_var),
-                    arg_type)) {
-                return ASRUtils::EXPR(ASR::make_FunctionCall_t(al, loc, s,
-                    s, new_args.p, new_args.size(), arg_type, value, nullptr));
-            } else {
-                new_func_name += std::to_string(i);
-                i++;
-            }
-        }
-    }
-    new_name = global_scope->get_unique_name(new_name);
-    SymbolTable *fn_symtab = al.make_new<SymbolTable>(global_scope);
-
-    Vec<ASR::expr_t*> args;
-    {
-        args.reserve(al, 1);
-        ASR::symbol_t *arg = ASR::down_cast<ASR::symbol_t>(ASR::make_Variable_t(
-            al, loc, fn_symtab, s2c(al, "x"), nullptr, 0, ASR::intentType::In,
-            nullptr, nullptr, ASR::storage_typeType::Default, arg_type,
-            ASR::abiType::Source, ASR::Public, ASR::presenceType::Required, false));
-        fn_symtab->add_symbol(s2c(al, "x"), arg);
-        args.push_back(al, ASRUtils::EXPR(ASR::make_Var_t(al, loc, arg)));
-    }
-
-    ASR::symbol_t *return_var = ASR::down_cast<ASR::symbol_t>(ASR::make_Variable_t(
-        al, loc, fn_symtab, s2c(al, new_name), nullptr, 0, ASRUtils::intent_return_var,
-        nullptr, nullptr, ASR::storage_typeType::Default, arg_type,
-        ASR::abiType::Source, ASR::Public, ASR::presenceType::Required, false));
-    fn_symtab->add_symbol(s2c(al, new_name), return_var);
-
-    Vec<ASR::stmt_t*> body;
-    body.reserve(al, 1);
-
-    Vec<char *> dep;
-    dep.reserve(al, 1);
-
-    {
-        SymbolTable *fn_symtab_1 = al.make_new<SymbolTable>(fn_symtab);
-        Vec<ASR::expr_t*> args_1;
-        {
-            args_1.reserve(al, 1);
-            ASR::symbol_t *arg = ASR::down_cast<ASR::symbol_t>(ASR::make_Variable_t(
-                al, loc, fn_symtab_1, s2c(al, "x"), nullptr, 0, ASR::intentType::In,
-                nullptr, nullptr, ASR::storage_typeType::Default, arg_type,
-                ASR::abiType::BindC, ASR::Public, ASR::presenceType::Required, true));
-            fn_symtab_1->add_symbol(s2c(al, "x"), arg);
-            args_1.push_back(al, ASRUtils::EXPR(ASR::make_Var_t(al, loc, arg)));
-        }
-
-        ASR::symbol_t *return_var_1 = ASR::down_cast<ASR::symbol_t>(ASR::make_Variable_t(
-            al, loc, fn_symtab_1, s2c(al, c_func_name), nullptr, 0, ASRUtils::intent_return_var,
-            nullptr, nullptr, ASR::storage_typeType::Default, arg_type,
-            ASR::abiType::BindC, ASR::Public, ASR::presenceType::Required, false));
-        fn_symtab_1->add_symbol(s2c(al, c_func_name), return_var_1);
-
-        ASR::symbol_t *s =  ASR::down_cast<ASR::symbol_t>(
-            ASRUtils::make_Function_t_util(al, loc, fn_symtab_1,
-            s2c(al, c_func_name), nullptr, 0, args_1.p, args_1.n, nullptr, 0,
-            ASRUtils::EXPR(ASR::make_Var_t(al, loc, return_var_1)),
-            ASR::abiType::BindC, ASR::accessType::Public,
-            ASR::deftypeType::Interface, s2c(al, c_func_name), false, false,
-            false, false, false, nullptr, 0, nullptr, 0, false, false, false));
-        fn_symtab->add_symbol(c_func_name, s);
-        dep.push_back(al, s2c(al, c_func_name));
-        Vec<ASR::call_arg_t> call_args;
-        {
-            call_args.reserve(al, 1);
-            ASR::call_arg_t arg;
-            arg.m_value = args[0];
-            call_args.push_back(al, arg);
-        }
-        body.push_back(al, ASRUtils::STMT(ASR::make_Assignment_t(al, loc,
-            ASRUtils::EXPR(ASR::make_Var_t(al, loc, return_var)),
-            ASRUtils::EXPR(ASR::make_FunctionCall_t(al, loc, s, s,
-            call_args.p, call_args.n, arg_type, nullptr, nullptr)), nullptr)));
-    }
-
-    ASR::asr_t* new_subrout = ASRUtils::make_Function_t_util(al, loc,
-        fn_symtab, s2c(al, new_name), dep.p, dep.n, args.p, args.n, body.p, body.n,
-        ASRUtils::EXPR(ASR::make_Var_t(al, loc, return_var)),
-        ASR::abiType::Source, ASR::accessType::Public,
-        ASR::deftypeType::Implementation, nullptr, false, false, false,
-        false, false, nullptr, 0, nullptr, 0, false, false, false);
-    ASR::symbol_t *new_symbol = ASR::down_cast<ASR::symbol_t>(new_subrout);
-    global_scope->add_symbol(new_name, new_symbol);
-    return ASRUtils::EXPR(ASR::make_FunctionCall_t(al, loc, new_symbol,
-        new_symbol, new_args.p, new_args.size(), arg_type, value, nullptr));
-}
-
 
 class ReplaceIntrinsicFunction: public ASR::BaseExprReplacer<ReplaceIntrinsicFunction> {
 
@@ -179,27 +56,19 @@ class ReplaceIntrinsicFunction: public ASR::BaseExprReplacer<ReplaceIntrinsicFun
         // exactly the same arguments. For that we could use the
         // overload_id, and uniquely encode the argument types.
         // We could maintain a mapping of type -> id and look it up.
-        switch (x->m_intrinsic_id) {
-            case (static_cast<int64_t>(ASRUtils::IntrinsicFunctions::Sin)) : {
-                ASR::ttype_t *arg_type = ASRUtils::expr_type(x->m_args[0]);
-                // TODO: Handle complex type
-                LCOMPILERS_ASSERT(ASR::is_a<ASR::Real_t>(*arg_type))
-                *current_expr = instantiate_functions(al, x->base.base.loc,
-                    global_scope, s2c(al, "sin"), arg_type,
-                    new_args, x->m_value);
-                break;
-            }
-            case (static_cast<int64_t>(ASRUtils::IntrinsicFunctions::LogGamma)) : {
-                ASR::ttype_t *arg_type = ASRUtils::expr_type(x->m_args[0]);
-                *current_expr = instantiate_functions(al, x->base.base.loc,
-                    global_scope, s2c(al, "log_gamma"), arg_type,
-                    new_args, x->m_value);
-                break;
-            }
-            default : {
-                throw LCompilersException("Intrinsic function not implemented");
-            }
+        if( !ASRUtils::IntrinsicFunctionRegistry::is_intrinsic_function(x->m_intrinsic_id) ) {
+            throw LCompilersException("Intrinsic function not implemented");
         }
+
+        ASRUtils::impl_function instantiate_function =
+            ASRUtils::IntrinsicFunctionRegistry::get_instantiate_function(x->m_intrinsic_id);
+        Vec<ASR::ttype_t*> arg_types;
+        arg_types.reserve(al, x->n_args);
+        for( size_t i = 0; i < x->n_args; i++ ) {
+            arg_types.push_back(al, ASRUtils::expr_type(x->m_args[i]));
+        }
+        *current_expr = instantiate_function(al, x->base.base.loc,
+            global_scope, "sin", arg_types, new_args, x->m_value);
     }
 
 };
