@@ -100,6 +100,8 @@ void pass_replace_intrinsic_function(Allocator &al, ASR::TranslationUnit_t &unit
                              const LCompilers::PassOptions& /*pass_options*/) {
     ReplaceIntrinsicFunctionVisitor v(al, unit.m_global_scope);
     v.visit_TranslationUnit(unit);
+    PassUtils::UpdateDependenciesVisitor w(al);
+    w.visit_TranslationUnit(unit);
 }
 
 
