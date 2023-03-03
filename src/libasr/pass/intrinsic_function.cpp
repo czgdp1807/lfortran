@@ -68,7 +68,7 @@ class ReplaceIntrinsicFunction: public ASR::BaseExprReplacer<ReplaceIntrinsicFun
             arg_types.push_back(al, ASRUtils::expr_type(x->m_args[i]));
         }
         *current_expr = instantiate_function(al, x->base.base.loc,
-            global_scope, "sin", arg_types, new_args, x->m_value);
+            global_scope, arg_types, new_args, x->m_value);
     }
 
 };
