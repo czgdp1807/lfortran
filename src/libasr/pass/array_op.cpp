@@ -688,6 +688,7 @@ class ReplaceArrayOp: public ASR::BaseExprReplacer<ReplaceArrayOp> {
                 ASRUtils::expr_type(x->m_args[iarg]));
             at_least_one_array = at_least_one_array || array_mask[iarg];
         }
+
         if (!at_least_one_array) {
             return ;
         }
@@ -698,6 +699,8 @@ class ReplaceArrayOp: public ASR::BaseExprReplacer<ReplaceArrayOp> {
         ASR::expr_t* operand = nullptr;
         int common_rank = 0;
         bool are_all_rank_same = true;
+        bool is_any_array_constant = true;
+        int array_constant_size = -1;
         for( size_t iarg = 0; iarg < x->n_args; iarg++ ) {
             result_var = nullptr;
             ASR::expr_t** current_expr_copy_9 = current_expr;
@@ -706,7 +709,7 @@ class ReplaceArrayOp: public ASR::BaseExprReplacer<ReplaceArrayOp> {
             operand = *current_expr;
             current_expr = current_expr_copy_9;
             operands.push_back(operand);
-            int rank_operand = PassUtils::get_rank(operand);
+            int rank_operand = ASRUtils::extract_n_dims_from_ttype(ASRUtils::expr_type(operand));
             if( common_rank == 0 ) {
                 common_rank = rank_operand;
             }
