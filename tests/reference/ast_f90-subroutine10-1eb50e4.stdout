@@ -1,0 +1,27 @@
+program test
+real :: x
+
+call sub(x, 1, *100, *200)
+print *, "Success:", x
+stop
+
+100 print *, "Negative input value"
+stop
+
+200 print *, "Input value too large"
+stop
+
+end program test
+
+
+subroutine sub(x, i, *, *)
+real, intent(out) :: x
+integer, intent(in) :: i
+if (i < 0) then
+    return 1
+end if
+if (i > 10) then
+    return 2
+end if
+x = i
+end subroutine sub

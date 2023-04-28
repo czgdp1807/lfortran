@@ -37,7 +37,8 @@
             a [(some_array
             [(()
             5
-            ())])]
+            ()
+            0)])]
             (TriviaNode
                 []
                 [(EndOfLine)

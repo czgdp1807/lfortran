@@ -1,0 +1,13 @@
+{
+    "basename": "ast_f90-subroutine10-1eb50e4",
+    "cmd": "lfortran --show-ast-f90 --no-color {infile}",
+    "infile": "tests/subroutine10.f90",
+    "infile_hash": "de16e99a96162482992b5d88a4d803f4389d34aa6fc5809a068f8d36",
+    "outfile": null,
+    "outfile_hash": null,
+    "stdout": "ast_f90-subroutine10-1eb50e4.stdout",
+    "stdout_hash": "33210b065e12eec5269a090b4451aea86dac683c032a35d2fe36141a",
+    "stderr": null,
+    "stderr_hash": null,
+    "returncode": 0
+}
