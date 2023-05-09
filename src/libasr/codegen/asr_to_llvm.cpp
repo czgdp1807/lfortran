@@ -1423,7 +1423,7 @@ public:
         builder->CreateStore(builder->CreateBitCast(arr, character_type), arg_arr);
         std::vector<llvm::Value*> args = {CreateLoad(arg_arr)};
         builder->CreateCall(fn, args);
-        arr_descr->set_is_allocated_flag(tmp, 0);
+        arr_descr->set_is_allocated_flag(tmp, (int64_t) 0);
     }
 
     llvm::Function* _Deallocate() {
@@ -3036,7 +3036,7 @@ public:
             m_type->type != ASR::ttypeType::Pointer &&
             !is_list && !is_data_only ) {
             // Set allocatable arrays as unallocated
-            arr_descr->set_is_allocated_flag(ptr, 0);
+            arr_descr->set_is_allocated_flag(ptr, false);
         }
     }
 
@@ -4283,6 +4283,33 @@ public:
             ASRUtils::type_get_past_pointer(value_array_type));
         llvm::AllocaInst *target = builder0.CreateAlloca(
             target_type, nullptr, "array_section_descriptor");
+        int value_rank = array_section->n_args, target_rank = 0;
+        llvm::Value *lbs[value_rank], *ubs[value_rank], *ds[value_rank];
+        llvm::Value *non_sliced_indices[value_rank];
+        for( int i = 0; i < value_rank; i++ ) {
+            lbs[i] = nullptr; ubs[i] = nullptr; ds[i] = nullptr;
+            non_sliced_indices[i] = nullptr;
+            if( array_section->m_args[i].m_step != nullptr ) {
+                visit_expr_wrapper(array_section->m_args[i].m_left, true);
+                lbs[i] = tmp;
+                visit_expr_wrapper(array_section->m_args[i].m_right, true);
+                ubs[i] = tmp;
+                visit_expr_wrapper(array_section->m_args[i].m_step, true);
+                ds[i] = tmp;
+                target_rank++;
+            } else {
+                visit_expr_wrapper(array_section->m_args[i].m_right, true);
+                non_sliced_indices[i] = tmp;
+            }
+        }
+        LCOMPILERS_ASSERT(target_rank > 0);
+        llvm::Value* target_dim_des_ptr = arr_descr->get_pointer_to_dimension_descriptor_array(target, false);
+        llvm::Value* target_dim_des_val = builder0.CreateAlloca(arr_descr->get_dimension_descriptor_type(false),
+            llvm::ConstantInt::get(getIntType(4), llvm::APInt(32, target_rank)));
+        builder->CreateStore(target_dim_des_val, target_dim_des_ptr);
+        arr_descr->fill_descriptor_for_array_section(value_desc, target,
+            lbs, ubs, ds, non_sliced_indices,
+            array_section->n_args, target_rank);
         builder->CreateStore(target, target_desc);
     }
 

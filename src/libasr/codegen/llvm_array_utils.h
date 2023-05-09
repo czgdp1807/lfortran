@@ -17,6 +17,9 @@
 
 namespace LCompilers {
 
+    // Forward declared
+    class ASRToLLVMVisitor;
+
     namespace LLVMArrUtils {
 
         llvm::Value* lfortran_malloc(llvm::LLVMContext &context, llvm::Module &module,
@@ -163,6 +166,12 @@ namespace LCompilers {
                 void fill_dimension_descriptor(
                     llvm::Value* arr, int n_dims) = 0;
 
+                virtual
+                void fill_descriptor_for_array_section(
+                    llvm::Value* value_desc, llvm::Value* target,
+                    llvm::Value** lbs, llvm::Value** ubs, llvm::Value** ds,
+                    llvm::Value** non_sliced_indices, int value_rank, int target_rank) = 0;
+
                 /*
                 * Returns the llvm::Type* associated with the
                 * dimension descriptor used by the current class.
@@ -220,6 +229,10 @@ namespace LCompilers {
                     llvm::Value* dim, bool load=true) = 0;
 
                 virtual
+                llvm::Value* get_dimension_size(llvm::Value* dim_des,
+                    bool load=true) = 0;
+
+                virtual
                 llvm::Value* get_rank(llvm::Value* arr, bool get_pointer=false) = 0;
 
                 virtual
@@ -258,7 +271,10 @@ namespace LCompilers {
                 llvm::Value* get_is_allocated_flag(llvm::Value* array) = 0;
 
                 virtual
-                void set_is_allocated_flag(llvm::Value* array, uint64_t status) = 0;
+                void set_is_allocated_flag(llvm::Value* array, bool status) = 0;
+
+                virtual
+                void set_is_allocated_flag(llvm::Value* array, llvm::Value* status) = 0;
 
                 virtual
                 llvm::Value* reshape(llvm::Value* array, llvm::Type* llvm_data_type,
@@ -360,6 +376,12 @@ namespace LCompilers {
                     llvm::Value* arr, int n_dims);
 
                 virtual
+                void fill_descriptor_for_array_section(
+                    llvm::Value* value_desc, llvm::Value* target,
+                    llvm::Value** lbs, llvm::Value** ubs, llvm::Value** ds,
+                    llvm::Value** non_sliced_indices, int value_rank, int target_rank);
+
+                virtual
                 llvm::Type* get_dimension_descriptor_type(bool get_pointer=false);
 
                 virtual
@@ -385,6 +407,10 @@ namespace LCompilers {
                     llvm::Value* dim, bool load=true);
 
                 virtual
+                llvm::Value* get_dimension_size(llvm::Value* dim_des,
+                    bool load=true);
+
+                virtual
                 llvm::Value* get_pointer_to_dimension_descriptor_array(llvm::Value* arr, bool load=true);
 
                 virtual
@@ -405,7 +431,10 @@ namespace LCompilers {
                 llvm::Value* get_is_allocated_flag(llvm::Value* array);
 
                 virtual
-                void set_is_allocated_flag(llvm::Value* array, uint64_t status);
+                void set_is_allocated_flag(llvm::Value* array, bool status);
+
+                virtual
+                void set_is_allocated_flag(llvm::Value* array, llvm::Value* status);
 
                 virtual
                 llvm::Value* reshape(llvm::Value* array, llvm::Type* llvm_data_type,
