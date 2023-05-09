@@ -2,7 +2,7 @@ program array_slice_01
 implicit none
 
 integer, target :: a(5, 6, 7, 19), sum_slice
-integer, pointer :: b(:, :), c(:)
+integer, pointer :: b(:, :)
 integer :: i, j, suma
 
 b => a(:, 3, 4:6, 17)

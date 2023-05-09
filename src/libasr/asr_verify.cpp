@@ -685,6 +685,8 @@ public:
         }
         require(x.m_type != nullptr,
             "ArrayItemSection::m_type cannot be nullptr");
+        // TODO: Check that number of dimensions in the type
+        // are same as the number of sliced dimensions
         visit_ttype(*x.m_type);
         if (check_external) {
             check_var_external(*x.m_v);

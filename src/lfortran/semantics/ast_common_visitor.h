@@ -2145,12 +2145,22 @@ public:
                 }
             }
 
+            Vec<ASR::dimension_t> empty_dims;
+            empty_dims.reserve(al, n_args);
             for( size_t i = 0; i < n_args; i++ ) {
                 if( args.p[i].m_step != nullptr &&
                     args.p[i].m_left == nullptr ) {
                     args.p[i].m_left = ASRUtils::get_bound(v_Var, i + 1, "lbound", al);
                 }
+                if( args.p[i].m_step != nullptr ) {
+                    ASR::dimension_t empty_dim;
+                    empty_dim.loc = loc;
+                    empty_dim.m_length = nullptr;
+                    empty_dim.m_start = nullptr;
+                    empty_dims.push_back(al, empty_dim);
+                }
             }
+            type = ASRUtils::duplicate_type(al, type, &empty_dims);
             return ASR::make_ArraySection_t(al, loc,
                 v_Var, args.p, args.size(), type, arr_ref_val);
         }

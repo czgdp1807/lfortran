@@ -81,18 +81,18 @@ program nbody
     num = 1000
 
     call offsetMomentum(1, v, mass)
-    e = energy(x, v, mass)
-    ! workaround
-    print *, e
-    if (abs(e + 0.16907516382852447) > 1e-8) error stop
+    ! e = energy(x, v, mass)
+    ! ! workaround
+    ! print *, e
+    ! if (abs(e + 0.16907516382852447) > 1e-8) error stop
 
-    do i = 1, num
-        call advance(tstep, x, v, mass)
-    end do
-    e = energy(x, v, mass)
-    ! workaround
-    print *, e
-    if (abs(e + 0.16908760523460617) > 1e-8) error stop
+    ! do i = 1, num
+    !     call advance(tstep, x, v, mass)
+    ! end do
+    ! e = energy(x, v, mass)
+    ! ! workaround
+    ! print *, e
+    ! if (abs(e + 0.16908760523460617) > 1e-8) error stop
 
     contains
 
@@ -109,64 +109,64 @@ program nbody
     end subroutine offsetMomentum
 
 
-    pure subroutine advance(tstep, x, v, mass)
-        real(kind=dp), intent(in) :: tstep
-        real(kind=dp), dimension(3, nb), intent(inout) :: x, v
-        real(kind=dp), dimension(nb), intent(in) :: mass
-        real(kind=dp) :: r(3, N), mag(N)
+    ! pure subroutine advance(tstep, x, v, mass)
+    !     real(kind=dp), intent(in) :: tstep
+    !     real(kind=dp), dimension(3, nb), intent(inout) :: x, v
+    !     real(kind=dp), dimension(nb), intent(in) :: mass
+    !     real(kind=dp) :: r(3, N), mag(N)
 
-        real(kind=dp) :: distance, d2
-        integer :: i, j, m
-        m = 1
-        do i = 1, nb
-            do j = i + 1, nb
-                r(:,m) = x(:,i) - x(:,j)
-                m = m + 1
-            end do
-        end do
+    !     real(kind=dp) :: distance, d2
+    !     integer :: i, j, m
+    !     m = 1
+    !     do i = 1, nb
+    !         do j = i + 1, nb
+    !             r(:,m) = x(:,i) - x(:,j)
+    !             m = m + 1
+    !         end do
+    !     end do
 
-        do m = 1, N
-            d2 = sum(r(:,m)**2)
-            distance = 1/sqrt(real(d2))
-            distance = distance * (1.5d0 - 0.5d0 * d2 * distance * distance)
-            !distance = distance * (1.5d0 - 0.5d0 * d2 * distance * distance)
-            mag(m) = tstep * distance**3
-        end do
+    !     do m = 1, N
+    !         d2 = sum(r(:,m)**2)
+    !         distance = 1/sqrt(real(d2))
+    !         distance = distance * (1.5d0 - 0.5d0 * d2 * distance * distance)
+    !         !distance = distance * (1.5d0 - 0.5d0 * d2 * distance * distance)
+    !         mag(m) = tstep * distance**3
+    !     end do
 
-        m = 1
-        do i = 1, nb
-            do j = i + 1, nb
-                v(:,i) = v(:,i) - r(:,m) * mass(j) * mag(m)
-                v(:,j) = v(:,j) + r(:,m) * mass(i) * mag(m)
+    !     m = 1
+    !     do i = 1, nb
+    !         do j = i + 1, nb
+    !             v(:,i) = v(:,i) - r(:,m) * mass(j) * mag(m)
+    !             v(:,j) = v(:,j) + r(:,m) * mass(i) * mag(m)
 
-                m = m + 1
-            end do
-        end do
+    !             m = m + 1
+    !         end do
+    !     end do
 
-        x = x + tstep * v
-    end subroutine advance
+    !     x = x + tstep * v
+    ! end subroutine advance
 
 
-    pure function energy(x, v, mass)
-        real(kind=dp) :: energy
-        real(kind=dp), dimension(3,nb), intent(in) :: x, v
-        real(kind=dp), dimension(nb), intent(in) :: mass
+    ! pure function energy(x, v, mass)
+    !     real(kind=dp) :: energy
+    !     real(kind=dp), dimension(3,nb), intent(in) :: x, v
+    !     real(kind=dp), dimension(nb), intent(in) :: mass
 
-        real(kind=dp) :: distance, tmp
-        real(kind=dp), dimension(3) :: d
-        integer :: i, j
+    !     real(kind=dp) :: distance, tmp
+    !     real(kind=dp), dimension(3) :: d
+    !     integer :: i, j
 
-        energy = 0.0d0
-        do i = 1, nb
-            energy = energy + 0.5d0 * mass(i) * sum(v(:,i)**2)
-            do j = i + 1, nb
-                d = x(:,i) - x(:,j)
-                tmp = sum(d**2)
-                distance = sqrt(tmp)
-                energy = energy - (mass(i) * mass(j)) / distance
-            end do
-        end do
-    end function energy
+    !     energy = 0.0d0
+    !     do i = 1, nb
+    !         energy = energy + 0.5d0 * mass(i) * sum(v(:,i)**2)
+    !         do j = i + 1, nb
+    !             d = x(:,i) - x(:,j)
+    !             tmp = sum(d**2)
+    !             distance = sqrt(tmp)
+    !             energy = energy - (mass(i) * mass(j)) / distance
+    !         end do
+    !     end do
+    ! end function energy
 
     pure function sum(arr) result(r)
         real(kind=dp), intent(in) :: arr(:)

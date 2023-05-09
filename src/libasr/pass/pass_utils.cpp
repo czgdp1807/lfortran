@@ -151,6 +151,10 @@ namespace LCompilers {
                 ASR::ttype_t *x_type = ASR::down_cast<ASR::StructInstanceMember_t>(x)->m_type;
                 ASR::dimension_t* m_dims;
                 get_dim_rank(x_type, m_dims, n_dims);
+            } else if (ASR::is_a<ASR::ArraySection_t>(*x)) {
+                ASR::ttype_t* x_type = ASR::down_cast<ASR::ArraySection_t>(x)->m_type;
+                ASR::dimension_t* m_dims;
+                get_dim_rank(x_type, m_dims, n_dims);
             }
             return n_dims;
         }
@@ -162,13 +166,32 @@ namespace LCompilers {
         ASR::expr_t* create_array_ref(ASR::expr_t* arr_expr, Vec<ASR::expr_t*>& idx_vars, Allocator& al) {
             Vec<ASR::array_index_t> args;
             args.reserve(al, 1);
-            for( size_t i = 0; i < idx_vars.size(); i++ ) {
-                ASR::array_index_t ai;
-                ai.loc = arr_expr->base.loc;
-                ai.m_left = nullptr;
-                ai.m_right = idx_vars[i];
-                ai.m_step = nullptr;
-                args.push_back(al, ai);
+            if( ASR::is_a<ASR::ArraySection_t>(*arr_expr) ) {
+                ASR::ArraySection_t* array_section = ASR::down_cast<ASR::ArraySection_t>(arr_expr);
+                arr_expr = array_section->m_v;
+                LCOMPILERS_ASSERT(array_section->n_args >= idx_vars.size());
+                for( size_t i = 0, j = 0; i < array_section->n_args; i++ ) {
+                    if( array_section->m_args[i].m_step == nullptr ) {
+                        args.push_back(al, array_section->m_args[i]);
+                    } else {
+                        ASR::array_index_t ai;
+                        ai.loc = arr_expr->base.loc;
+                        ai.m_left = nullptr;
+                        ai.m_right = idx_vars[j];
+                        ai.m_step = nullptr;
+                        args.push_back(al, ai);
+                        j++;
+                    }
+                }
+            } else {
+                for( size_t i = 0; i < idx_vars.size(); i++ ) {
+                    ASR::array_index_t ai;
+                    ai.loc = arr_expr->base.loc;
+                    ai.m_left = nullptr;
+                    ai.m_right = idx_vars[i];
+                    ai.m_step = nullptr;
+                    args.push_back(al, ai);
+                }
             }
             Vec<ASR::dimension_t> empty_dims;
             empty_dims.reserve(al, 1);

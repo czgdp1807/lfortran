@@ -4284,24 +4284,24 @@ public:
         llvm::AllocaInst *target = builder0.CreateAlloca(
             target_type, nullptr, "array_section_descriptor");
         int value_rank = array_section->n_args, target_rank = 0;
-        std::vector<llvm::Value*> lbs(value_rank, nullptr);
-        std::vector<llvm::Value*> ubs(value_rank, nullptr);
-        std::vector<llvm::Value*> ds(value_rank, nullptr);
-        std::vector<llvm::Value*> non_sliced_indices(value_rank, nullptr);
+        Vec<llvm::Value*> lbs; lbs.reserve(al, value_rank);
+        Vec<llvm::Value*> ubs; ubs.reserve(al, value_rank);
+        Vec<llvm::Value*> ds; ds.reserve(al, value_rank);
+        Vec<llvm::Value*> non_sliced_indices; non_sliced_indices.reserve(al, value_rank);
         for( int i = 0; i < value_rank; i++ ) {
-            lbs[i] = nullptr; ubs[i] = nullptr; ds[i] = nullptr;
-            non_sliced_indices[i] = nullptr;
+            lbs.p[i] = nullptr; ubs.p[i] = nullptr; ds.p[i] = nullptr;
+            non_sliced_indices.p[i] = nullptr;
             if( array_section->m_args[i].m_step != nullptr ) {
                 visit_expr_wrapper(array_section->m_args[i].m_left, true);
-                lbs[i] = tmp;
+                lbs.p[i] = tmp;
                 visit_expr_wrapper(array_section->m_args[i].m_right, true);
-                ubs[i] = tmp;
+                ubs.p[i] = tmp;
                 visit_expr_wrapper(array_section->m_args[i].m_step, true);
-                ds[i] = tmp;
+                ds.p[i] = tmp;
                 target_rank++;
             } else {
                 visit_expr_wrapper(array_section->m_args[i].m_right, true);
-                non_sliced_indices[i] = tmp;
+                non_sliced_indices.p[i] = tmp;
             }
         }
         LCOMPILERS_ASSERT(target_rank > 0);
@@ -4309,9 +4309,28 @@ public:
         llvm::Value* target_dim_des_val = builder0.CreateAlloca(arr_descr->get_dimension_descriptor_type(false),
             llvm::ConstantInt::get(getIntType(4), llvm::APInt(32, target_rank)));
         builder->CreateStore(target_dim_des_val, target_dim_des_ptr);
-        arr_descr->fill_descriptor_for_array_section(value_desc, target,
-            lbs, ubs, ds, non_sliced_indices,
-            array_section->n_args, target_rank);
+        ASR::ttype_t* array_type = ASRUtils::expr_type(array_section->m_v);
+        if( ASRUtils::is_data_only_array(array_type, ASR::abiType::Source) &&
+            ASRUtils::expr_intent(array_section->m_v) != ASR::intentType::Local ) {
+            ASR::dimension_t* m_dims = nullptr;
+            int n_dims = ASRUtils::extract_dimensions_from_ttype(array_type, m_dims);
+            LCOMPILERS_ASSERT(n_dims == value_rank);
+            Vec<llvm::Value*> llvm_diminfo;
+            llvm_diminfo.reserve(al, value_rank * 2);
+            for( int i = 0; i < value_rank; i++ ) {
+                visit_expr_wrapper(m_dims[i].m_start, true);
+                llvm_diminfo.push_back(al, tmp);
+                visit_expr_wrapper(m_dims[i].m_length, true);
+                llvm_diminfo.push_back(al, tmp);
+            }
+            arr_descr->fill_descriptor_for_array_section_data_only(value_desc, target,
+                lbs.p, ubs.p, ds.p, non_sliced_indices.p,
+                llvm_diminfo.p, value_rank, target_rank);
+        } else {
+            arr_descr->fill_descriptor_for_array_section(value_desc, target,
+                lbs.p, ubs.p, ds.p, non_sliced_indices.p,
+                array_section->n_args, target_rank);
+        }
         builder->CreateStore(target, target_desc);
     }
 

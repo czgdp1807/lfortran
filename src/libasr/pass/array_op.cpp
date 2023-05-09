@@ -101,6 +101,21 @@ class ReplaceArrayOp: public ASR::BaseExprReplacer<ReplaceArrayOp> {
         Vec<ASR::stmt_t*>& doloop_body,
         ASR::expr_t* op_expr, int op_expr_dim_offset, LOOP_BODY loop_body) {
         PassUtils::create_idx_vars(idx_vars_value, var_rank, loc, al, current_scope, "_v");
+        ASR::ArraySection_t* array_section_op = nullptr;
+        int last_sliced_index = -1;
+        int first_sliced_index = -1;
+        if( ASR::is_a<ASR::ArraySection_t>(*op_expr) ) {
+            array_section_op = ASR::down_cast<ASR::ArraySection_t>(op_expr);
+            op_expr = array_section_op->m_v;
+            for( int j = 0; j < (int) array_section_op->n_args; j++ ) {
+                if( array_section_op->m_args[j].m_step != nullptr &&
+                    j > last_sliced_index ) {
+                    last_sliced_index = j;
+                    first_sliced_index = j;
+                    break;
+                }
+            }
+        }
         if( use_custom_loop_params ) {
             PassUtils::create_idx_vars(idx_vars, loop_vars, loop_var_indices,
                                        result_ubound, result_inc,
@@ -135,7 +150,18 @@ class ReplaceArrayOp: public ASR::BaseExprReplacer<ReplaceArrayOp> {
                     loop_body();
                 } else {
                     if( var_rank > 0 ) {
-                        ASR::expr_t* idx_lb = PassUtils::get_bound(op_expr, i + op_expr_dim_offset, "lbound", al);
+                        int dim = i + op_expr_dim_offset;
+                        if( array_section_op ) {
+                            for( int j = 0; j < (int) array_section_op->n_args; j++ ) {
+                                if( array_section_op->m_args[j].m_step != nullptr &&
+                                    j > last_sliced_index ) {
+                                    dim = j + 1;
+                                    last_sliced_index = j;
+                                    break;
+                                }
+                            }
+                        }
+                        ASR::expr_t* idx_lb = PassUtils::get_bound(op_expr, dim, "lbound", al);
                         ASR::stmt_t* set_to_one = ASRUtils::STMT(ASR::make_Assignment_t(
                             al, loc, idx_vars_value[i+1], idx_lb, nullptr));
                         doloop_body.push_back(al, set_to_one);
@@ -152,7 +178,12 @@ class ReplaceArrayOp: public ASR::BaseExprReplacer<ReplaceArrayOp> {
                 doloop = ASRUtils::STMT(ASR::make_DoLoop_t(al, loc, nullptr, head, doloop_body.p, doloop_body.size()));
             }
             if( var_rank > 0 ) {
-                ASR::expr_t* idx_lb = PassUtils::get_bound(op_expr, 1, "lbound", al);
+                ASR::expr_t* idx_lb = nullptr;
+                if( array_section_op ) {
+                    idx_lb = PassUtils::get_bound(op_expr, first_sliced_index, "lbound", al);
+                } else {
+                    idx_lb = PassUtils::get_bound(op_expr, 1, "lbound", al);
+                }
                 ASR::stmt_t* set_to_one = ASRUtils::STMT(ASR::make_Assignment_t(al, loc, idx_vars_value[0], idx_lb, nullptr));
                 pass_result.push_back(al, set_to_one);
             }
