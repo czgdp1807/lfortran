@@ -1423,7 +1423,7 @@ public:
         builder->CreateStore(builder->CreateBitCast(arr, character_type), arg_arr);
         std::vector<llvm::Value*> args = {CreateLoad(arg_arr)};
         builder->CreateCall(fn, args);
-        arr_descr->set_is_allocated_flag(tmp, (int64_t) 0);
+        arr_descr->set_is_allocated_flag(tmp, false);
     }
 
     llvm::Function* _Deallocate() {
