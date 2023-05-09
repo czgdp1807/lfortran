@@ -4284,8 +4284,10 @@ public:
         llvm::AllocaInst *target = builder0.CreateAlloca(
             target_type, nullptr, "array_section_descriptor");
         int value_rank = array_section->n_args, target_rank = 0;
-        llvm::Value *lbs[value_rank], *ubs[value_rank], *ds[value_rank];
-        llvm::Value *non_sliced_indices[value_rank];
+        std::vector<llvm::Value*> lbs(value_rank, nullptr);
+        std::vector<llvm::Value*> ubs(value_rank, nullptr);
+        std::vector<llvm::Value*> ds(value_rank, nullptr);
+        std::vector<llvm::Value*> non_sliced_indices(value_rank, nullptr);
         for( int i = 0; i < value_rank; i++ ) {
             lbs[i] = nullptr; ubs[i] = nullptr; ds[i] = nullptr;
             non_sliced_indices[i] = nullptr;

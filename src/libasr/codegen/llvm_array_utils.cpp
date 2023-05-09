@@ -393,8 +393,9 @@ namespace LCompilers {
 
         void SimpleCMODescriptor::fill_descriptor_for_array_section(
             llvm::Value* value_desc, llvm::Value* target,
-            llvm::Value** lbs, llvm::Value** ubs, llvm::Value** ds,
-            llvm::Value** non_sliced_indices, int value_rank, int target_rank) {
+            std::vector<llvm::Value*>& lbs, std::vector<llvm::Value*>& ubs,
+            std::vector<llvm::Value*>& ds, std::vector<llvm::Value*>& non_sliced_indices,
+            int value_rank, int target_rank) {
             builder->CreateStore(LLVM::CreateLoad(*builder, get_pointer_to_data(value_desc)),
                                  get_pointer_to_data(target));
 
