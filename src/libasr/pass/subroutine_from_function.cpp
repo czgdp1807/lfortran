@@ -252,7 +252,11 @@ class ReplaceFunctionCallWithSubroutineCall:
                         ASR::dimension_t alloc_dim;
                         alloc_dim.loc = loc;
                         alloc_dim.m_start = make_ConstantWithKind(make_IntegerConstant_t, make_Integer_t, 1, 4, loc);
-                        alloc_dim.m_length = m_dims_[i].m_length;
+                        if( m_dims_[i].m_length ) {
+                            alloc_dim.m_length = m_dims_[i].m_length;
+                        } else {
+                            alloc_dim.m_length = ASRUtils::get_size(*current_expr, i + 1, al);
+                        }
                         alloc_dims.push_back(al, alloc_dim);
                     }
                     Vec<ASR::alloc_arg_t> alloc_args;
