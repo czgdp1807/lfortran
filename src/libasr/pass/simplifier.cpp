@@ -214,21 +214,6 @@ ASR::expr_t* get_ArrayConstructor_size(Allocator& al, ASR::ArrayConstructor_t* x
     return array_size;
 }
 
-ASR::ttype_t* create_array_type_with_empty_dims(Allocator& al,
-    size_t value_n_dims, ASR::ttype_t* value_type) {
-    Vec<ASR::dimension_t> empty_dims; empty_dims.reserve(al, value_n_dims);
-    for( size_t i = 0; i < value_n_dims; i++ ) {
-        ASR::dimension_t empty_dim;
-        Location loc; loc.first = 1, loc.last = 1;
-        empty_dim.loc = loc;
-        empty_dim.m_length = nullptr;
-        empty_dim.m_start = nullptr;
-        empty_dims.push_back(al, empty_dim);
-    }
-    return ASRUtils::make_Array_t_util(al, value_type->base.loc,
-        ASRUtils::extract_type(value_type), empty_dims.p, empty_dims.size());
-}
-
 ASR::expr_t* create_temporary_variable_for_scalar(Allocator& al,
     ASR::expr_t* value, SymbolTable* scope, std::string name_hint) {
     ASR::ttype_t* value_type = ASRUtils::expr_type(value);
@@ -269,7 +254,7 @@ ASR::expr_t* create_temporary_variable_for_array(Allocator& al,
         !is_pointer_required ) {
         var_type = value_type;
     } else {
-        var_type = create_array_type_with_empty_dims(al, value_n_dims, value_type);
+        var_type = ASRUtils::create_array_type_with_empty_dims(al, value_n_dims, value_type);
         if( ASR::is_a<ASR::ArraySection_t>(*value) && is_pointer_required ) {
             if( ASRUtils::is_simd_array(value) ) {
                 var_type = ASRUtils::expr_type(value);
@@ -767,7 +752,7 @@ ASR::expr_t* create_and_allocate_temporary_variable_for_array(
             !ASRUtils::is_simd_array(array_expr) ) {
             size_t value_n_dims = ASRUtils::extract_n_dims_from_ttype(
                 ASRUtils::expr_type(array_expr));
-            ASR::ttype_t* tmp_type = create_array_type_with_empty_dims(
+            ASR::ttype_t* tmp_type = ASRUtils::create_array_type_with_empty_dims(
                 al, value_n_dims, ASRUtils::expr_type(array_expr));
             tmp_type = ASRUtils::TYPE(ASR::make_Pointer_t(al, loc, tmp_type));
             ASR::expr_t* array_expr_ptr = create_temporary_variable_for_array(
@@ -1396,7 +1381,7 @@ class ReplaceExprWithTemporary: public ASR::BaseExprReplacer<ReplaceExprWithTemp
             const Location& loc = x->base.base.loc;
             size_t value_n_dims = ASRUtils::extract_n_dims_from_ttype(
                 ASRUtils::expr_type(*current_expr));
-            ASR::ttype_t* tmp_type = create_array_type_with_empty_dims(
+            ASR::ttype_t* tmp_type = ASRUtils::create_array_type_with_empty_dims(
                 al, value_n_dims, ASRUtils::expr_type(*current_expr));
             tmp_type = ASRUtils::TYPE(ASR::make_Pointer_t(al, loc, tmp_type));
             ASR::expr_t* array_expr_ptr = create_temporary_variable_for_array(
