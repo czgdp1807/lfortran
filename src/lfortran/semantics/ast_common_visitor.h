@@ -843,6 +843,7 @@ public:
         {"selected_real_kind", {IntrinsicSignature({"p", "r", "radix"}, 0, 3)}},
         {"nearest", {IntrinsicSignature({"x", "s"}, 2, 2)}},
         {"compiler_version", {IntrinsicSignature({}, 0, 0)}},
+        {"command_argument_count", {IntrinsicSignature({}, 0, 0)}},
         {"ishftc", {IntrinsicSignature({"i", "shift", "size"}, 2, 3)}},
         {"ichar", {IntrinsicSignature({"C", "kind"}, 1, 2)}},
         {"char", {IntrinsicSignature({"I", "kind"}, 1, 2)}},
@@ -894,7 +895,7 @@ public:
         {"dimag", {"aimag", {"complex8"}}},
         {"imag", {"aimag", {"complex"}}},
         {"imagpart", {"aimag", {"complex"}}},
-        {"realpart", {"real", {"complex"}}},
+        {"realpart", {"real", {"complex" ,"int4"}}},
         {"isign", {"sign", {"int4", "int4"}}},
         {"dsign", {"sign", {"real8", "real8"}}},
         {"dgamma", {"gamma", {"real8"}}},
@@ -5599,6 +5600,9 @@ public:
             }
             // Call the intrinsic function for the current combination of arguments
             // result_array->m_args[i] = ASRUtils::expr_value(ASRUtils::EXPR(create_func(al, loc, intrinsic_args, diag)));
+            if (create_func(al, loc, intrinsic_args, diag) == nullptr) {
+                throw SemanticAbort();
+            }
             ASR::expr_t* result = ASRUtils::expr_value(ASRUtils::EXPR(create_func(al, loc, intrinsic_args, diag)));
             array_type = ASRUtils::expr_type(result);
             new_expr.push_back(al, result);
@@ -5674,7 +5678,7 @@ public:
 
                     std::vector<int> array_indices_in_args = find_array_indices_in_args(args);
                     std::vector<std::string> inquiry_functions = {"epsilon", "radix", "range", "precision", "rank", "tiny", "huge", "bit_size", "new_line", "digits",
-                        "maxexponent", "minexponent", "storage_size"};
+                        "maxexponent", "minexponent", "storage_size", "kind"};
                     if (are_all_args_evaluated &&
                         (std::find(inquiry_functions.begin(), inquiry_functions.end(), var_name) == inquiry_functions.end()) &&
                         !array_indices_in_args.empty())

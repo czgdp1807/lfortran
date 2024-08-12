@@ -3837,7 +3837,6 @@ namespace Pack {
 
         for (int i = 0; i < dim; i++) {
             ASR::expr_t* arg_a = ASRUtils::fetch_ArrayConstant_value(al, a_const, i);
-
             if (ASR::is_a<ASR::IntegerConstant_t>(*arg_a)) {
                 a[i] = ASR::down_cast<ASR::IntegerConstant_t>(arg_a)->m_n;
             } else if (ASR::is_a<ASR::RealConstant_t>(*arg_a)) {
@@ -3891,9 +3890,9 @@ namespace Pack {
 
     static inline ASR::expr_t *eval_Pack(Allocator & al,
         const Location & loc, ASR::ttype_t *return_type, Vec<ASR::expr_t*>& args, diag::Diagnostics& diag) {
+        ASRBuilder builder(al, loc);
         ASR::expr_t *array = args[0], *mask = args[1], *vector = args[2];
         ASR::ttype_t *type_array = ASRUtils::type_get_past_pointer(ASRUtils::type_get_past_allocatable(expr_type(array)));
-        ASR::ttype_t *type_vector = ASRUtils::type_get_past_pointer(ASRUtils::type_get_past_allocatable(expr_type(vector)));
         ASR::ttype_t* type_a = ASRUtils::type_get_past_array(type_array);
 
         int kind = ASRUtils::extract_kind_from_ttype_t(type_a);
@@ -3902,7 +3901,10 @@ namespace Pack {
 
         bool is_vector_present = false;
         if (vector) is_vector_present = true;
-        if (is_vector_present) dim_vector = ASRUtils::get_fixed_size_of_array(type_vector);
+        if (is_vector_present) {
+            ASR::ttype_t *type_vector = ASRUtils::type_get_past_pointer(ASRUtils::type_get_past_allocatable(expr_type(vector)));
+            dim_vector = ASRUtils::get_fixed_size_of_array(type_vector);
+        }
 
         std::vector<bool> b(dim_array);
         populate_vector(al, b, mask, dim_array);
@@ -3911,48 +3913,80 @@ namespace Pack {
             if (kind == 4) {
                 std::vector<float> a(dim_array), c(dim_vector), res;
                 populate_vector(al, a, array, dim_array);
-                populate_vector(al, c, vector, dim_vector);
-                evaluate_Pack(a, b, c, res);
-                Vec<ASR::expr_t*> values; values.reserve(al, res.size());
-                for (auto it: res) {
-                    values.push_back(al, EXPR(ASR::make_RealConstant_t(al, loc, it, real32)));
+                if (is_vector_present) {
+                    populate_vector(al, c, vector, dim_vector);
                 }
-                return EXPR(ASRUtils::make_ArrayConstructor_t_util(al, loc, values.p, values.n, return_type, ASR::arraystorageType::ColMajor));
+                evaluate_Pack(a, b, c, res);
+                std::vector<ASR::expr_t*> values;
+                for (auto it: res) {
+                    values.push_back(EXPR(ASR::make_RealConstant_t(al, loc, it, real32)));
+                }
+                return builder.ArrayConstant(values, extract_type(return_type), false);
             } else if (kind == 8) {
                 std::vector<double> a(dim_array), c(dim_vector), res;
                 populate_vector(al, a, array, dim_array);
-                populate_vector(al, c, vector, dim_vector);
-                evaluate_Pack(a, b, c, res);
-                Vec<ASR::expr_t*> values; values.reserve(al, res.size());
-                for (auto it: res) {
-                    values.push_back(al, EXPR(ASR::make_RealConstant_t(al, loc, it, real64)));
+               if (is_vector_present) {
+                    populate_vector(al, c, vector, dim_vector);
                 }
-                return EXPR(ASRUtils::make_ArrayConstructor_t_util(al, loc, values.p, values.n, return_type, ASR::arraystorageType::ColMajor));
+                evaluate_Pack(a, b, c, res);
+                std::vector<ASR::expr_t*> values;
+                for (auto it: res) {
+                    values.push_back(EXPR(ASR::make_RealConstant_t(al, loc, it, real64)));
+                }
+                return builder.ArrayConstant(values, extract_type(return_type), false);
             } else {
                 append_error(diag, "The `pack` intrinsic doesn't handle kind " + std::to_string(kind) + " yet", loc);
                 return nullptr;
             }
         } else if (ASRUtils::is_integer(*type_a)) {
-            if (kind == 4) {
+            if (kind == 1) {
+                std::vector<int8_t> a(dim_array), c(dim_vector), res;
+                populate_vector(al, a, array, dim_array);
+                if (is_vector_present) {
+                    populate_vector(al, c, vector, dim_vector);
+                }
+                evaluate_Pack(a, b, c, res);
+                std::vector<ASR::expr_t*> values;
+                for (auto it: res) {
+                    values.push_back(EXPR(ASR::make_IntegerConstant_t(al, loc, it, int8)));
+                }
+                return builder.ArrayConstant(values, extract_type(return_type), false);
+            } else if (kind == 2) {
+                std::vector<int16_t> a(dim_array), c(dim_vector), res;
+                populate_vector(al, a, array, dim_array);
+                if (is_vector_present) {
+                    populate_vector(al, c, vector, dim_vector);
+                }
+                evaluate_Pack(a, b, c, res);
+                std::vector<ASR::expr_t*> values;
+                for (auto it: res) {
+                    values.push_back(EXPR(ASR::make_IntegerConstant_t(al, loc, it, int16)));
+                }
+                return builder.ArrayConstant(values, extract_type(return_type), false);
+            } else if (kind == 4) {
                 std::vector<int32_t> a(dim_array), c(dim_vector), res;
                 populate_vector(al, a, array, dim_array);
-                populate_vector(al, c, vector, dim_vector);
-                evaluate_Pack(a, b, c, res);
-                Vec<ASR::expr_t*> values; values.reserve(al, res.size());
-                for (auto it: res) {
-                    values.push_back(al, EXPR(ASR::make_IntegerConstant_t(al, loc, it, int32)));
+                if (is_vector_present) {
+                    populate_vector(al, c, vector, dim_vector);
                 }
-                return EXPR(ASRUtils::make_ArrayConstructor_t_util(al, loc, values.p, values.n, return_type, ASR::arraystorageType::ColMajor));
+                evaluate_Pack(a, b, c, res);
+                std::vector<ASR::expr_t*> values;
+                for (auto it: res) {
+                    values.push_back(EXPR(ASR::make_IntegerConstant_t(al, loc, it, int32)));
+                }
+                return builder.ArrayConstant(values, extract_type(return_type), false);
             } else if (kind == 8) {
                 std::vector<int64_t> a(dim_array), c(dim_vector), res;
                 populate_vector(al, a, array, dim_array);
-                populate_vector(al, c, vector, dim_vector);
-                evaluate_Pack(a, b, c, res);
-                Vec<ASR::expr_t*> values; values.reserve(al, res.size());
-                for (auto it: res) {
-                    values.push_back(al, EXPR(ASR::make_IntegerConstant_t(al, loc, it, int64)));
+                if (is_vector_present) {
+                    populate_vector(al, c, vector, dim_vector);
                 }
-                return EXPR(ASRUtils::make_ArrayConstructor_t_util(al, loc, values.p, values.n, return_type, ASR::arraystorageType::ColMajor));
+                evaluate_Pack(a, b, c, res);
+                std::vector<ASR::expr_t*> values;
+                for (auto it: res) {
+                    values.push_back(EXPR(ASR::make_IntegerConstant_t(al, loc, it, int64)));
+                }
+                return builder.ArrayConstant(values, extract_type(return_type), false);
             } else {
                 append_error(diag, "The `pack` intrinsic doesn't handle kind " + std::to_string(kind) + " yet", loc);
                 return nullptr;
@@ -3960,34 +3994,40 @@ namespace Pack {
         } else if (ASRUtils::is_logical(*type_a)) {
             std::vector<bool> a(dim_array), c(dim_vector), res;
             populate_vector(al, a, array, dim_array);
-            populate_vector(al, c, vector, dim_vector);
-            evaluate_Pack(a, b, c, res);
-            Vec<ASR::expr_t*> values; values.reserve(al, res.size());
-            for (auto it: res) {
-                values.push_back(al, EXPR(ASR::make_LogicalConstant_t(al, loc, it, logical)));
+            if (is_vector_present) {
+                populate_vector(al, c, vector, dim_vector);
             }
-            return EXPR(ASRUtils::make_ArrayConstructor_t_util(al, loc, values.p, values.n, return_type, ASR::arraystorageType::ColMajor));
+            evaluate_Pack(a, b, c, res);
+            std::vector<ASR::expr_t*> values;
+                for (auto it: res) {
+                    values.push_back(EXPR(ASR::make_LogicalConstant_t(al, loc, it, int32)));
+                }
+                return builder.ArrayConstant(values, extract_type(return_type), false);
         } else if (ASRUtils::is_complex(*type_a)) {
             if (kind == 4) {
                 std::vector<std::pair<float, float>> a(dim_array), c(dim_vector), res;
                 populate_vector_complex(al, a, array, dim_array);
-                populate_vector_complex(al, c, vector, dim_vector);
-                evaluate_Pack(a, b, c, res);
-                Vec<ASR::expr_t*> values; values.reserve(al, res.size());
-                for (auto it: res) {
-                    values.push_back(al, EXPR(ASR::make_ComplexConstant_t(al, loc, it.first, it.second, type_get_past_array(return_type))));
+                if (is_vector_present) {
+                    populate_vector_complex(al, c, vector, dim_vector);
                 }
-                return EXPR(ASRUtils::make_ArrayConstructor_t_util(al, loc, values.p, values.n, return_type, ASR::arraystorageType::ColMajor));
+                evaluate_Pack(a, b, c, res);
+                 std::vector<ASR::expr_t*> values;
+                for (auto it: res) {
+                    values.push_back(EXPR(ASR::make_ComplexConstant_t(al, loc, it.first, it.second, type_get_past_array(return_type))));
+                }
+                return builder.ArrayConstant(values, extract_type(return_type), false);
             } else if (kind == 8) {
                 std::vector<std::pair<double, double>> a(dim_array), c(dim_vector), res;
                 populate_vector_complex(al, a, array, dim_array);
-                populate_vector_complex(al, c, vector, dim_vector);
-                evaluate_Pack(a, b, c, res);
-                Vec<ASR::expr_t*> values; values.reserve(al, res.size());
-                for (auto it: res) {
-                    values.push_back(al, EXPR(ASR::make_ComplexConstant_t(al, loc, it.first, it.second, type_get_past_array(return_type))));
+                if (is_vector_present) {
+                    populate_vector_complex(al, c, vector, dim_vector);
                 }
-                return EXPR(ASRUtils::make_ArrayConstructor_t_util(al, loc, values.p, values.n, return_type, ASR::arraystorageType::ColMajor));
+                evaluate_Pack(a, b, c, res);
+                std::vector<ASR::expr_t*> values;
+                for (auto it: res) {
+                    values.push_back(EXPR(ASR::make_ComplexConstant_t(al, loc, it.first, it.second, type_get_past_array(return_type))));
+                }
+                return builder.ArrayConstant(values, extract_type(return_type), false);
             } else {
                 append_error(diag, "The `pack` intrinsic doesn't handle kind " + std::to_string(kind) + " yet", loc);
                 return nullptr;
@@ -4747,14 +4787,15 @@ namespace DotProduct {
             body.push_back(al, b.DoLoop(i, LBound(args[0], 1), UBound(args[0], 1), {
                 b.Assignment(result, b.Add(result, EXPR(ASR::make_ComplexBinOp_t(al, loc, func_call_conjg, ASR::binopType::Mul, b.ArrayItem_01(args[1], {i}), return_type, nullptr))))
             }, nullptr));
-        } else {
-            if (is_real(*return_type)) {
-                body.push_back(al, b.Assignment(result, make_ConstantWithType(make_RealConstant_t, 0.0, return_type, loc)));
-            } else {
-                body.push_back(al, b.Assignment(result, make_ConstantWithType(make_IntegerConstant_t, 0, return_type, loc)));
-            }
+        } else if (is_real(*return_type)) {
+            body.push_back(al, b.Assignment(result, make_ConstantWithType(make_RealConstant_t, 0.0, return_type, loc)));
             body.push_back(al, b.DoLoop(i, LBound(args[0], 1), UBound(args[0], 1), {
-                b.Assignment(result, b.Add(result, b.Mul(b.ArrayItem_01(args[0], {i}), b.ArrayItem_01(args[1], {i}))))
+                b.Assignment(result, b.Add(result, b.Mul(b.ArrayItem_01(args[0], {i}), b.ArrayItem_01(b.r2r_t(args[1], arg_types[0]), {i}))))
+            }, nullptr));
+        } else {
+            body.push_back(al, b.Assignment(result, make_ConstantWithType(make_IntegerConstant_t, 0, return_type, loc)));
+            body.push_back(al, b.DoLoop(i, LBound(args[0], 1), UBound(args[0], 1), {
+                b.Assignment(result, b.Add(result, b.Mul(b.ArrayItem_01(args[0], {i}), b.ArrayItem_01(b.i2i_t(args[1], arg_types[0]), {i}))))
             }, nullptr));
         }
         body.push_back(al, b.Return());
