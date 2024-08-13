@@ -814,10 +814,9 @@ bool is_temporary_needed(ASR::expr_t* value) {
     // we don't want to create a temporary for a struct instance member
     // e.g. main_arr_alloc % num = 12;
     // where `value` is `main_arr_alloc % num`
-    bool is_struct_instance_member = ASR::is_a<ASR::StructInstanceMember_t>(*value);
 
     return is_expr_with_no_type && !is_elemental_expr(value) &&
-        is_non_empty_fixed_size_array && !is_struct_instance_member;
+        is_non_empty_fixed_size_array && !ASR::is_a<ASR::StructInstanceMember_t>(*value);
 }
 
 class ArgSimplifier: public ASR::CallReplacerOnExpressionsVisitor<ArgSimplifier>
