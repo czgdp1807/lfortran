@@ -806,11 +806,18 @@ bool is_elemental_expr(ASR::expr_t* value) {
 bool is_temporary_needed(ASR::expr_t* value) {
     bool is_expr_with_no_type = value && (std::find(exprs_with_no_type.begin(), exprs_with_no_type.end(),
         value->type) == exprs_with_no_type.end()) && ASRUtils::is_array(ASRUtils::expr_type(value));
+
     bool is_non_empty_fixed_size_array = value && (!ASRUtils::is_fixed_size_array(ASRUtils::expr_type(value)) ||
         (ASRUtils::is_fixed_size_array(ASRUtils::expr_type(value)) &&
         ASRUtils::get_fixed_size_of_array(ASRUtils::expr_type(value)) > 0));
-    return value && is_expr_with_no_type &&
-            !is_elemental_expr(value) && is_non_empty_fixed_size_array;
+
+    // we don't want to create a temporary for a struct instance member
+    // e.g. main_arr_alloc % num = 12;
+    // where `value` is `main_arr_alloc % num`
+    bool is_struct_instance_member = ASR::is_a<ASR::StructInstanceMember_t>(*value);
+
+    return is_expr_with_no_type && !is_elemental_expr(value) &&
+        is_non_empty_fixed_size_array && !is_struct_instance_member;
 }
 
 class ArgSimplifier: public ASR::CallReplacerOnExpressionsVisitor<ArgSimplifier>
