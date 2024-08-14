@@ -5078,21 +5078,34 @@ public:
         newdim.loc = x.base.base.loc;
         newdim.m_start = nullptr, newdim.m_length = nullptr;
         dims.push_back(al, newdim);
-        ASR::ttype_t* empty_type = nullptr;
+        ASR::ttype_t* reshape_ttype = nullptr;
         ASR::array_physical_typeType array_physical_type = ASRUtils::extract_physical_type(
                                                                 ASRUtils::expr_type(array));
-        if( array_physical_type == ASR::array_physical_typeType::FixedSizeArray ) {
-            empty_type = ASRUtils::duplicate_type(al, ASRUtils::type_get_past_allocatable(
-                            ASRUtils::type_get_past_pointer(ASRUtils::expr_type(array))),
-                            &dims, array_physical_type, true);
+        ASR::Array_t* arr_type = ASR::down_cast<ASR::Array_t>(ASRUtils::expr_type(newshape));
+        size_t n_dims = ASR::down_cast<ASR::IntegerConstant_t>(arr_type->m_dims[0].m_length)->m_n;
+        if (ASR::is_a<ASR::ArrayConstant_t>(*newshape)) {
+            ASR::ArrayConstant_t* arr_constant_newshape = ASR::down_cast<ASR::ArrayConstant_t>(newshape);
+            Vec<ASR::dimension_t> dims; dims.reserve(al, n_dims);
+            ASR::expr_t* int32_one = ASRUtils::EXPR(ASR::make_IntegerConstant_t(
+                        al, x.base.base.loc, 1, ASRUtils::TYPE(ASR::make_Integer_t(al, x.base.base.loc, 4))));
+            for (size_t i=0; i < n_dims; i++) {
+                ASR::dimension_t dim;
+                Location loc; loc.first = 1, loc.last = 1;
+                dim.loc = x.base.base.loc;
+                dim.m_length = ASRUtils::fetch_ArrayConstant_value(al, arr_constant_newshape, i);
+                dim.m_start = int32_one;
+                dims.push_back(al, dim);
+            }
+            reshape_ttype = ASRUtils::make_Array_t_util(al, x.base.base.loc,
+                                ASRUtils::extract_type(ASRUtils::expr_type(array)),
+                                dims.p, dims.size(), ASR::abiType::Source, false, array_physical_type, true, false);
         } else {
-            ASR::Array_t* arr_type = ASR::down_cast<ASR::Array_t>(ASRUtils::expr_type(newshape));
-            size_t n_dims = ASR::down_cast<ASR::IntegerConstant_t>(arr_type->m_dims[0].m_length)->m_n;
-            empty_type = ASRUtils::create_array_type_with_empty_dims(al, n_dims,
-                ASRUtils::type_get_past_allocatable(ASRUtils::type_get_past_pointer(ASRUtils::expr_type(array))));
+            reshape_ttype = ASRUtils::create_array_type_with_empty_dims(al, n_dims,
+                ASRUtils::type_get_past_allocatable(ASRUtils::type_get_past_pointer(ASRUtils::expr_type(array))),
+                array_physical_type);
         }
         newshape = ASRUtils::cast_to_descriptor(al, newshape);
-        return ASR::make_ArrayReshape_t(al, x.base.base.loc, array, newshape, empty_type, nullptr);
+        return ASR::make_ArrayReshape_t(al, x.base.base.loc, array, newshape, reshape_ttype, nullptr);
     }
 
     ASR::asr_t* create_BitCast(const AST::FuncCallOrArray_t& x) {

@@ -5479,7 +5479,8 @@ inline ASR::asr_t* make_ArrayConstructor_t_util(Allocator &al, const Location &a
 }
 
 ASR::ttype_t* create_array_type_with_empty_dims(Allocator& al,
-    size_t value_n_dims, ASR::ttype_t* value_type);
+    size_t value_n_dims, ASR::ttype_t* value_type,
+    ASR::array_physical_typeType physical_type=ASR::array_physical_typeType::DescriptorArray);
 
 void make_ArrayBroadcast_t_util(Allocator& al, const Location& loc,
     ASR::expr_t*& expr1, ASR::expr_t*& expr2);
