@@ -266,7 +266,9 @@ ASR::expr_t* create_temporary_variable_for_array(Allocator& al,
         }
     }
 
-    std::string var_name = scope->get_unique_name("__libasr_created_" + name_hint);
+    std::string pointer_suffix = ASR::is_a<ASR::Pointer_t>(*var_type) ? "pointer" : "";
+    std::string var_name = scope->get_unique_name("__libasr_created_" + name_hint + pointer_suffix);
+
     ASR::symbol_t* temporary_variable = ASR::down_cast<ASR::symbol_t>(ASR::make_Variable_t(
         al, value->base.loc, scope, s2c(al, var_name), nullptr, 0, ASR::intentType::Local,
         nullptr, nullptr, ASR::storage_typeType::Default, var_type, nullptr, ASR::abiType::Source,
