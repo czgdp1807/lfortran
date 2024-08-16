@@ -341,6 +341,14 @@ class ReplaceArrayOp: public ASR::BaseExprReplacer<ReplaceArrayOp> {
         }
     }
 
+    void replace_ArrayBroadcast(ASR::ArrayBroadcast_t* x) {
+        ASR::expr_t** current_expr_copy_161 = current_expr;
+        current_expr = &(x->m_array);
+        replace_expr(x->m_array);
+        current_expr = current_expr_copy_161;
+        *current_expr = x->m_array;
+    }
+
 };
 
 ASR::expr_t* at(Vec<ASR::expr_t*>& vec, int64_t index) {
@@ -415,8 +423,15 @@ class ArrayOpVisitor: public ASR::CallReplacerOnExpressionsVisitor<ArrayOpVisito
         remove_original_stmt = remove_original_stmt_copy;
     }
 
-    bool call_replace_on_expr(ASR::exprType expr_type) {
-        switch( expr_type ) {
+    bool call_replace_on_assignment_value(const ASR::Assignment_t& x) {
+        if (!ASRUtils::is_array(ASRUtils::expr_type(x.m_target)) &&
+            ASRUtils::is_array(ASRUtils::expr_type(x.m_value))
+        ) {
+            return true;
+        }
+
+        ASR::exprType value_expr_type = x.m_value->type;
+        switch( value_expr_type ) {
             case ASR::exprType::ArrayConstant:
             case ASR::exprType::ArrayConstructor: {
                 return true;
@@ -641,14 +656,17 @@ class ArrayOpVisitor: public ASR::CallReplacerOnExpressionsVisitor<ArrayOpVisito
                 xx.m_value = iaf->m_value;
             }
         }
-        if( !ASRUtils::is_array(ASRUtils::expr_type(xx.m_target)) ||
+
+        if( (!ASRUtils::is_array(ASRUtils::expr_type(xx.m_target)) &&
+                !ASRUtils::is_array(ASRUtils::expr_type(xx.m_value))) ||
             std::find(skip_exprs.begin(), skip_exprs.end(), xx.m_value->type) != skip_exprs.end() ||
             (ASRUtils::is_simd_array(xx.m_target) && ASRUtils::is_simd_array(xx.m_value)) ) {
             return ;
         }
+
         xx.m_value = ASRUtils::get_past_array_broadcast(xx.m_value);
         const Location loc = x.base.base.loc;
-        if( call_replace_on_expr(xx.m_value->type) ) {
+        if( call_replace_on_assignment_value(xx)) {
             replacer.result_expr = xx.m_target;
             ASR::expr_t** current_expr_copy = current_expr;
             current_expr = const_cast<ASR::expr_t**>(&xx.m_value);
